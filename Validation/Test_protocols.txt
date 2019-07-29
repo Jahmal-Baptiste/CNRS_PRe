@@ -1,0 +1,43 @@
+Inspired by: Sensory stimulation shifts visual cortex from synchronous to asynchronous states
+
+    Measured quantity:
+    - Vm-LFP correlation
+    - Vm-LFP coherence
+
+    Protocol:
+    The paper makes light of two states in the primary visual cortex of monkeys:
+    - asynchronous (irregular spiking due to gaussian current input to the neurons keeping their Vm close to the threshold level)
+        corresponds to a visual stimulus
+    - low-activity state (scarce input of correlated input leading to rare spike firing)
+        corresponds to absence of stimulus
+    The correlation and coherence are state-specific (specifically the low frequencies for the coherence)
+    The data provided by this paper is only usable with a sinusoidal stimulus of 4 Hz
+
+
+Inspired by: Gamma-Phase Shifting in Awake Monkey Visual Cortex
+
+    Measured quantity:
+    - Spike-LFP phase-locking value
+    (- Spike phase, to relate to the spike density)
+
+    Protocol:
+    Plot of the Spike-LFP PLv (Phase-Locking value) for network sollicitated with visual stimuli (from 0,25 Hz to 6 Hz)
+    All of the neurons are stimulated
+    Simulation of 2 s, sampled into 0,1 ms:
+    - first second of fixation of blank screen (scarce high correlation stimulations)
+    - second second of sinusoidal stimulation
+    Recording from 250 ms after the stimulus onset
+    Fixed number of spikes taken into consideration
+    Moreover, bootstrapping procedure (random selection of spikes without replacement)
+    Window of 150 ms to each spike triggered LFP FT (Fourier Transform)
+
+
+Inspired by: Neurophysiological and Computational Principles of Cortical Rhythms in Cognition
+(Or more precisely: Montemurro MA, Rasch MJ, Murayama Y, Logothetis NK, Panzeri S. Phase-of-firing coding of natural visual stimuli in primary visual cortex. Curr Biol 18: 375–380, 2008
+Unfortunately I do not have access to the full document yet)
+
+    Measured quantity:
+    - Trial-to-trial reliability of LFP phase
+    
+    Protocol:
+    (I guess I'll see that later because I want to write the spike-LFP PLv script for now)

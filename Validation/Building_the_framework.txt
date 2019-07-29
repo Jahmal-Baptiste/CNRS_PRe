@@ -1,0 +1,73 @@
+Any NeuronUnit test script will have the following actions:
+(Most of these will be abstracted away in SciUnit or NeuronUnit modules that make things easier for the developer)
+
+1. Instantiate a model(s) from a model class, with parameters of interest to build a specific model.
+2. Instantiate a test(s) from a test class, with parameters of interest to build a specific test.
+3. Check that the model has the capabilities required to take the test.
+4. Make the model take the test.
+5. Generate a score from that test run.
+6. Bind the score to the specific model/test combination and any related data from test execution.
+7. Visualize the score (i.e. print or display the result of the test).
+
+
+1....................................................................................................................
+First of all I must create my model class! (Won't be very easy I'm afraid)
+The most important thing I should know is that the model I am testing is an LFP computation model
+
+The model class hence must:
+- use data from neural networks, wether they are freshly computed or pre-existing;
+- choose if the data has to be computed or used (from a certain directory), or at least check if there's available data;
+- compute the LFP signal according to the parameters of the model (only one method so it will be simple);
+- implement the necessary capabilities (Vm and LFP).
+
+
+IMPORTANT............................................................................................................
+One question comes into my mind: how to take into consideration the dependence on the position from the signals.
+In the end it might be relevant to have tests exploring the importance of relative distances of signal sources.
+This problem splits in two subproblems:
+- Vm sources: they have a fixed position that can ba read from the data;
+- LFP signal: litterally depends on the position so it must be an argument that must be stored as a parameter of this signal.
+
+
+
+CAPABILITIES.........................................................................................................
+The second thing is to implement the capabilities I will use (only two):
+- get_membrane_potential from neronunit.capabilities.ProducesMembranePotential (I must override it myself);
+- produce_local_field_potential (I must create the capability class ProducesLocalFieldPotential).
+
+
+2....................................................................................................................
+Now the tests classes!
+- I musn't forget to define the capabilities each takes (required_capabilities);
+- The type of score either (type_score) (I don't know yet);
+- the generate_prediction method: simply the generated LFP, depending on the position;
+- the compute_score method: depends on the test (of course).
+
+
+VM-LFP CORRELATION TEST..............................................................................................
+Make sure that the protocol is a good one (validate_observation):
+- low activity (scarce short high correlation stimuli as only spike generators);
+- asynchronous state provoked by a sinusoidal stimulus;
+For each of the protocols, the 1s measurement period is preceded by a 600ms fixation (where a short high correlation stimulus occurs).
+
+The compute_score method will compare the Vm-LFP correlation to a reference plot.
+I still have to define the reference function... Maybe an average of the functions available in the paper I inspire the test from.
+The score will be the "sum squared difference" between the two functions, available in compute_ssd (from sciunit.scores)
+
+
+VM-LFP COHERENCE TEST................................................................................................
+Make sure the protocol is a good one (validate_observation): the same as for the previous test
+
+The compute_score method will compare the Vm-LFP coherence to a reference value/plot.
+This comparison will be done only on low frequencies because of the high variability of the coherence for higher frequencies.
+The score will also be the "sum squared difference" between the two functions.
+
+
+LFP-SPIKES PHASE-LOCK VALUE..........................................................................................
+Make sure the protocol is a good one (validate_observation):
+Sinusoidal stimulus of 1s after a 525ms period of low activity (during which a short high correlation stimulus occured)
+
+The compute_score method will look for a maximum of the Phase-Lock value in the gamma band (30-80 Hz).
+It will fit the data with a model of gaussian function and return the position of the maximum and the sum squared difference
+between the fit and the data.
+The score will depend on the position of the maximum and the quality of the fit.

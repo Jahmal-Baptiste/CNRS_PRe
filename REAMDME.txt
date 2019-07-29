@@ -1,0 +1,15 @@
+###################################
+### TO CONNECT TO THE CONTAINER ###
+###################################
+
+(host)$ docker run -v `pwd`:`pwd` -w `pwd` -i -t neuralensemble/simulationx /bin/bash
+
+ou : (on va oublier pour l'instant)
+(host)$ ssh -Y -i ./docker_key -p 32769 docker@localhost
+
+
+########################
+### TO END CONNEXION ###
+########################
+
+(docker)$ exit
