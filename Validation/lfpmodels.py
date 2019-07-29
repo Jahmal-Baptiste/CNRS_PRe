@@ -27,14 +27,16 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
     It also checks if positional data is available. If not it assigns positions to the neurons (randomly or not).
     """
 
-    def __init__(self, name=None, network_model="VA", space_dependency=False, dimensionnality=2, dimensions=np.array([0.002]),
-                 reach=0.001, electrode_positions=np.array([[0., 0.]]), sigma=0.3):
+    def __init__(self, name=None, network_model="VA", space_dependency=False, dimensionnality=3,
+                 dimensions=np.array([0.002, 0.002, 0.]), reach=0.001,
+                 electrode_positions=np.array([[0.], [0.], [0.]]), sigma=0.3):
         self.name                = name
         self.network_model       = network_model       #Voggels-Abbott for the moment
         self.space_dependency    = space_dependency    #Boolean indicating if the neurons' positions are available
         self.dimensionnality     = dimensionnality     #dimensionnality of the network - either 2 or 3 D
-        self.dimensions          = dimensions          #1,2D-array: width and height (when exists) of the network (in m)
+        self.dimensions          = dimensions          #2,3D-array: leght, width and height (when exists) of the network (in m)
         self.reach               = reach               #reach of the LFP (in m)
+        np.transpose(electrode_positions)              #to have the the coordinates along the 0 axis, as opposed to the input state
         self.electrode_positions = electrode_positions #positions of the electrodes (in m)
         self.sigma               = sigma               #parameter in the Coulomb law's formula (in S/m)
         self.directory_PUREPATH  = PurePath()
@@ -43,7 +45,8 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             if max(abs(e_pos))+self.reach <= self.dimensions/2.:
                 raise ValueError("Wrong electrode position! Must have its reach zone in the network.")
         
-        return super(CoulombModel, self).__init__() #MUST FINISH THIS LINE (name=name, etc.)
+        return super(CoulombModel, self).__init__(name, network_model, space_dependency, dimensionnality,
+                                                  dimensions, reach, electrode_positions, sigma) #MUST FINISH THIS LINE (name=name, etc.)
     
     #############################################
     ### methods related to raw available data ###
@@ -263,7 +266,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         Only works if they have a 2D structure.
         """
         num_neurons = len(self.get_spike_trains)
-        positions   = self.dimensions[0]*(np.random.rand(num_neurons, dimensionnality)-0.5)
+        positions   = np.multiply(self.dimensions, np.random.rand(num_neurons, self.dimensionnality)-0.5)
         return positions
     
 
