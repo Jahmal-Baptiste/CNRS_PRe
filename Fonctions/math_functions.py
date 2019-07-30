@@ -41,3 +41,21 @@ if __name__ == "__main__":
 
     distance = ((function(xdata) - fitted_function(xdata))**2).sum()
     print(distance)
+
+
+    """
+    Script showing how to use the skew test.
+    """
+
+    from scipy.stats import skew, skewtest
+
+    totest1 = np.random.standard_normal((10000, 5))
+    totest2 = np.random.randn(10000, 5)
+    skewresult1 = skew(totest1)
+    testresult1 = skewtest(totest1)
+    skewresult2 = skew(totest2)
+    testresult2 = skewtest(totest2)
+    print(skewresult1)
+    print(testresult1)
+    print(skewresult2)
+    print(testresult2)
