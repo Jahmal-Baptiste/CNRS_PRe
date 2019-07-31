@@ -31,6 +31,17 @@ def constwindowcorrelation(a, b):
     return corr
 
 
+def zerolagcorrelation(a, b):
+    '''
+    Normalized zero-lag cross-correlation between same-sized arrays a and b.
+    '''
+    raw_corr = correlate(a, b, mode='valid')
+    norm_a   = np.sqrt(correlate(a, a, mode='valid'))
+    norm_b   = np.sqrt(correlate(b, b, mode='valid'))
+    corr     = raw_corr/(norm_a*norm_b)
+    return corr
+
+
 def constwilcoxcorrelation(a, b):
     '''Estimated cross-correlation array with a fixed interval size for each time point of calculation
     relying on the Wilcoxon test.'''

@@ -218,7 +218,7 @@ if 1 == 0:
 
 print('Computation of the distances...')
 positions_exc = network_width*(np.random.rand(num_sig, dimensionnality)-0.5)
-inv_distances_exc = electrode_neuron_inv_dist(num_electrodes, num_sig, electrode_position, positions_exc, reach, dimensionnality)[0]
+inv_distances_exc = electrode_neuron_inv_dist(num_electrodes, num_sig, electrode_position, positions_exc, reach, dimensionnality)[0, :]
 
 print('Computation of the excitatory LFP...')
 current_array = np.multiply(vm_exc, gsyn_exc)
@@ -378,7 +378,7 @@ if 1 == 0:
 
 print('Computation of the distances...')
 positions_inh = network_width*(np.random.rand(num_sig, dimensionnality)-0.5)
-inv_distances_inh = electrode_neuron_inv_dist(num_electrodes, num_sig, electrode_position, positions_inh, reach, dimensionnality)[0]
+inv_distances_inh = electrode_neuron_inv_dist(num_electrodes, num_sig, electrode_position, positions_inh, reach, dimensionnality)[0, :]
 
 print('Computation of the inhibitory LFP...')
 current_array = np.multiply(vm_inh, gsyn_inh)

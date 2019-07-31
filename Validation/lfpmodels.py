@@ -221,8 +221,8 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
     
     def produce_local_field_potential(self):
         """
-        Calculates and returns the 1,2D-array of the LFP.
-        The first dimension corresponds to the electrodes and does not exist if there is only one.
+        Calculates and returns the 2D-array of the LFP.
+        The first dimension corresponds to the electrodes.
         """
         vm               = self.get_membrane_potential()
         gsyn             = self.get_conductance()
@@ -244,8 +244,6 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
 
         LFP = np.sum(big_current_array, big_inv_dist_array, axis=2)/(4*np.pi*self.sigma)
 
-        if num_electrodes == 1:
-            np.reshape(LFP, (num_time_points,))
         return LFP    
 
 
@@ -301,6 +299,27 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         corr_time_points = np.arange(-duration/2, duration/2+dt, dt)
         return corr, corr_time_points
     
+
+    def produce_vm_LFP_zerolagcorrelations(self, start=600, duration=1000, dt=0.1):
+        """
+        Calculates the zero-lag correlations between the neurons' membrane potentials and the LFP.
+        Interesting plots to do with this data can be:
+        - histogram of the correlation distribution;
+        - confrontation of the correlation values between a non-stimulated and stimulated state (for the same neurons).
+        """
+        start_index    = int(start/dt)
+        duration_index = int(duration/dt)
+
+        vm  = self.get_membrane_potential()
+        vm  = vm[start_index:start_index+duration_index, :]
+        LFP = np.reshape(self.produce_local_field_potential()[0, start_index:start_index+duration_index], (duration_index+1,))
+
+        def zerolagtcorrelationtoLFP(v):
+            return crsscorr.zerolagcorrelation(v, LFP)
+        
+        zerolagcorrelations = np.apply_along_axis(zerolagtcorrelationtoLFP, 0, vm)
+        return zerolagcorrelations
+
 
     def produce_vm_LFP_coherence(self, start=600, duration=1000, dt=0.1):
         """
