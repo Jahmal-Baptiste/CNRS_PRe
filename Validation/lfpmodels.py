@@ -24,7 +24,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
                    ProducesConductance, ProducesSpikes):
     """
     A model of LFP computation that relies on the Coulomb law.
-    It also checks if positional data is available. If not it assigns positions to the neurons (randomly or not).
+    It also checks if positional data is available. If not it assigns positions to the neurons (randomly).
     """
 
     def __init__(self, name=None, network_model="VA", space_dependency=False, dimensionnality=3,
@@ -48,9 +48,9 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         return super(CoulombModel, self).__init__(name, network_model, space_dependency, dimensionnality,
                                                   dimensions, reach, electrode_positions, sigma) #MUST FINISH THIS LINE (name=name, etc.)
     
-    #############################################
-    ### methods related to raw available data ###
-    #############################################
+    #================================================================================================================
+    #== methods related to raw available data =======================================================================
+    #================================================================================================================
 
     def set_directory_path(self, parent_directory="../Exemples/Results/", date="20190718"):
         if self.network_model == "VA":
@@ -215,9 +215,9 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         return global_spiketrain
 
 
-    ###########################
-    ### LFP related methods ###
-    ###########################
+    #================================================================================================================
+    #== LFP related methods =========================================================================================
+    #================================================================================================================
     
     def produce_local_field_potential(self):
         """
@@ -270,9 +270,9 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         return positions
     
 
-    ############################
-    ### test related methods ###
-    ############################
+    #================================================================================================================
+    #== test related methods ========================================================================================
+    #================================================================================================================
     
     def produce_vm_LFP_correlation(self, start=600, duration=1000, dt=0.1):
         """

@@ -5,7 +5,8 @@ from numpy.linalg import norm
 def electrode_neuron_inv_dist(num_electrodes, num_neurons, electrode_positions, neuron_positions, reach,
                               dimensionnality):
     """
-    Returns a 1,2D-array of the electrodes-neurons inverse distances (1D if there is one electrode).
+    Returns a 2D-array of the electrodes-neurons inverse distances.
+    The distances are null if greater than the reach.
     """
     distances = np.zeros((num_electrodes, num_neurons))
     for e_index in range(num_electrodes):
@@ -17,9 +18,6 @@ def electrode_neuron_inv_dist(num_electrodes, num_neurons, electrode_positions, 
     inv_dist   = np.power(distances, -1)                                     #inverse distances
     valid_dist = np.heaviside(reach*np.ones(distances.shape) - distances, 1) #normalized distances within the reach
     inv_dist   = np.multiply(inv_dist, valid_dist)                           #selected distances (within the reach)
-
-    if num_electrodes == 1:
-        inv_dist = inv_dist[0]
     
     return inv_dist
 

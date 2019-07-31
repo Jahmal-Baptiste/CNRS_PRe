@@ -44,14 +44,21 @@ class Vm_LFP_CorrelationTest(sciunit.Test):
 
     def validate_simulation(self, model, low_skew=0.3, high_skew=0.5):
         """
-        Checks if the network observation is in the expected state (low-activity for a blank fixation experiment or
+        Checks if the network observation is in the expected state (low-activity for a blank fixation experiment or \
         asynchronous for a sinusoidal stimulus).
         If the network is not in the expected state the user is asked if he still wants to continue with the test.
+        Method based on the macaques' V1 characteristics (may not be useful for the cats' V1).
         """
         vm           = model.get_membrane_potential() #here I am using the simulated vm as the observation...
         #vm           = observation
         skew_array   = skew(vm)
         average_skew = np.average(skew_array)
+        """
+        There is a problem in the way I calculated the skew because I haven't gotten rid of the spike-related potentials, \
+        which adds skew to the value that is meaningful...
+        Anyway it seems (with the litterature I have read so far) that the cats are in a synchronous state before even \
+        confronted to a visual stimulation so this first-hand test might be irrelevant.
+        """
 
         if average_skew >= low_skew and average_skew <= high_skew:
             sys.exit("The observation skew does not allow a clear state identification.")
