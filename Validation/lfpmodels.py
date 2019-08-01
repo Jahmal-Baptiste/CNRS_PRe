@@ -300,7 +300,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         return corr, corr_time_points
     
 
-    def produce_vm_LFP_zerolagcorrelations(self, start=600, duration=1000, dt=0.1):
+    def produce_vm_LFP_zerolagcorrelations(self, withinreach=True, start=600, duration=1000, dt=0.1):
         """
         Calculates the zero-lag correlations between the neurons' membrane potentials and the LFP.
         Interesting plots to do with this data can be:
@@ -313,39 +313,54 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         vm  = self.get_membrane_potential()
         vm  = vm[start_index:start_index+duration_index, :]
         LFP = np.reshape(self.produce_local_field_potential()[0, start_index:start_index+duration_index], (duration_index+1,))
+        
+        ### ELIMINATION OF THE CONTRIBUTION OF NEURONS THAT ARE OUT OF THE REACH ZONE
+        if withinreach:
+            num_neurons      = vm.shape[1]
+            num_electrodes   = self.electrode_positions.shape[0]
+            neuron_positions = self.get_positions()
+            inv_dist         = nf.electrode_neuron_inv_dist(num_electrodes, num_neurons,
+                                                            self.electrode_positions, neuron_positions,
+                                                            self.reach, self.dimensionnality)
+            valid_dist       = np.heaviside(inv_dist-1./self.reach, 1) #array of neurons that are within the reach
+            vm               = np.multiply(vm, valid_dist)             #vms of neurons that are out of the reach are null
 
         def zerolagtcorrelationtoLFP(v):
             return crsscorr.zerolagcorrelation(v, LFP)
         
-        zerolagcorrelations = np.apply_along_axis(zerolagtcorrelationtoLFP, 0, vm)
-        return zerolagcorrelations
+        zerolagcorrelations = np.apply_along_axis(zerolagtcorrelationtoLFP, axis=0, arr=vm)
+        return zerolagcorrelations #if neurons=="reach", neurons that are out of the reach zone have a null correlation with the LFP
 
 
-    def produce_vm_LFP_coherence(self, start=600, duration=1000, dt=0.1):
+    def produce_vm_LFP_meancoherence(self, withinreach=True, start=600, duration=1000, dt=0.1):
         """
-        Calculates the coherence between the Vm of the closest neuron to the (first) electrode and the LFP signal
-        recorded at this electrode.
-        returns the coherence and the corresponding frequencies (in Hz).
+        Calculates the mean coherence between the neurons' membrane potentials and the LFP.
+        returns the mean coherence, the corresponding frequencies (in Hz) and the standard deviation error for each
+        coherence value.
         The relevant data is supposed to be 1s long.
         """
         start_index    = int(start/dt)
         duration_index = int(duration/dt)
 
-        vm               = self.get_membrane_potential()
-        neuron_positions = self.get_positions()
+        vm  = self.get_membrane_potential()
+        vm  = vm[start_index:start_index+duration_index, :]
+        LFP = np.reshape(self.produce_local_field_potential()[0, start_index:start_index+duration_index], (duration_index+1,))
+        
+        ### ELIMINATION OF THE CONTRIBUTION OF NEURONS THAT ARE OUT OF THE REACH ZONE
+        if withinreach:
+            num_neurons      = vm.shape[1]
+            num_electrodes   = self.electrode_positions.shape[0]
+            neuron_positions = self.get_positions()
+            inv_dist         = nf.electrode_neuron_inv_dist(num_electrodes, num_neurons,
+                                                            self.electrode_positions, neuron_positions,
+                                                            self.reach, self.dimensionnality)
+            valid_dist       = np.heaviside(inv_dist-1./self.reach, 1) #array of neurons that are within the reach
+            vm               = np.multiply(vm, valid_dist)             #vms of neurons that are out of the reach are null
 
-        num_neurons     = vm.shape[1]
-        num_electrodes  = self.electrode_positions.shape[0]
-        inv_dist        = nf.electrode_neuron_inv_dist(num_electrodes, num_neurons,
-                                                       self.electrode_positions, neuron_positions,
-                                                       self.reach, self.dimensionnality)
-        closest_neuron = np.argmax(inv_dist)
-        selected_vm    = np.reshape(vm[start_index:start_index+duration_index+1, closest_neuron], (duration_index+1,))
-        selected_LFP   = np.reshape(self.produce_local_field_potential()[0, start_index:start_index+duration_index+1],
-                                    (duration_index+1,))
-
-        f, coherenc = coherence(selected_vm, selected_LFP, fs=1000./dt)
-        return coherenc, f
+        f, coherence_array = coherence(LFP, vm, axis=0, nperseg=int(2**12), fs=1000./dt)
+        meancoherence_array = np.average(coherence_array, axis=1)
+        coherencestd_array  = np.std(coherence_array, axis=1)
+        return meancoherence_array, f, coherencestd_array
     
 
     def produce_phase_lock_value(self, start=525, offset=250, duration=1000, dt=0.1):

@@ -90,7 +90,6 @@ print("Plots of the Vms...")
 for analogsignal in seg.analogsignals:
     if analogsignal.name == 'v':
         vm_exc = analogsignal
-        print(type(vm_exc))
 
 n_plot = 2
 
@@ -468,12 +467,14 @@ plt.xlabel("Lag (ms)")
 plt.plot(corr_time_points, corr, label='constwindowcorrelation')
 plt.legend()
 
-f, coherenc = coherence(selected_vm, selected_LFP, fs=fs)
 plt.figure()
+f, coherenc = coherence(selected_vm, selected_LFP, nperseg=int(2**12), noverlap=None, fs=fs)
+print(f.shape)
 plt.title("Vm-LFP Coherence")
 plt.ylabel("Coherence")
 plt.xlabel("Frequency (Hz)")
-plt.semilogx(f, coherenc)
+plt.semilogx(f[:205], coherenc[:205], label='Half-overlap')
+plt.legend()
 
 
 
@@ -513,7 +514,7 @@ if 1 == 1:
         t_s       = selected_spikes[t_index]                                         #time of spike occurence
         t_s_index = int(10*t_s)                                                      #corresponding index for the arrays
         LFP_s     = LFP_filt2[t_s_index - window_width : t_s_index + window_width+1] #LFP centered at the spike occurrence
-        #LFP_s     = LFP_tot[t_s_index - window_width : t_s_index + window_width+1]   #Non-filtered version
+        LFP_s     = LFP_tot[t_s_index - window_width : t_s_index + window_width+1]   #Non-filtered version
         wLFP_s    = np.multiply(w, LFP_s)                                            #centered LFP multiplied by the Hanning window
         FT_s      = fft(wLFP_s)                                                      #Fourier transform of this weighted LFP
         nFT_s     = np.divide(FT_s, np.abs(FT_s))                                    #normalized Fourier transform
