@@ -60,8 +60,10 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             if not directory_PATH.exists():
                 sys.exit("Directory does not exist!")
             self.directory_PUREPATH = PurePath(directory_path)
-        else:
+        elif self.network_model == "T2":
             raise NotImplementedError("Only the Voggels-Abbott model is implemented.")
+        else:
+            raise NotImplementedError("Only the T2 and the Voggels-Abott models are supported.")
             
     
     def get_file_path(self, time="201157", neuron_type=""):
@@ -73,13 +75,15 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
                                                                                                              date, time)
             file_PATH = Path(file_path)
             if not file_PATH.exists():
-                sys.exit("File name does not exist! (Surely wrong time.)")
-        else:
+                sys.exit("File name does not exist! (Try checking the time argument.)")
+        elif self.network_model == "T2":
             raise NotImplementedError("Only the Voggels-Abbott model is implemented.")
+        else:
+            raise NotImplementedError("Only the T2 and the Voggels-Abott models are supported.")
         return file_path
     
 
-    def get_membrane_potential(self, num_files=2):
+    def get_membrane_potential(self, num_files=2, trial=0):
         """
         Returns a neo.core.analogsignal.AnalogSignal representing the membrane potential of all neurons, regardless
         of their type.
@@ -94,7 +98,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             file_path   = self.get_file_path(neuron_type=neuron_type)
             PyNN_file   = open(file_path, "rb")
             loaded      = pickle.load(PyNN_file)
-            seg         = loaded.segments[0] #we suppose there is only one segment
+            seg         = loaded.segments[trial] #we suppose there is only one segment
             for analogsignal in seg.analogsignals:
                 if analogsignal.name == 'v':
                     vm_exc = analogsignal
@@ -104,7 +108,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             file_path   = self.get_file_path(neuron_type=neuron_type)
             PyNN_file   = open(file_path, "rb")
             loaded      = pickle.load(PyNN_file)
-            seg         = loaded.segments[0] #we suppose there is only one segment
+            seg         = loaded.segments[trial] #we suppose there is only one segment
             for analogsignal in seg.analogsignals:
                 if analogsignal.name == 'v':
                     vm_inh = analogsignal
@@ -118,14 +122,14 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             file_path   = self.get_file_path(neuron_type=neuron_type)
             PyNN_file   = open(file_path, "rb")
             loaded      = pickle.load(PyNN_file)
-            seg         = loaded.segments[0] #we suppose there is only one segment
+            seg         = loaded.segments[trial] #we suppose there is only one segment
             for analogsignal in seg.analogsignals:
                 if analogsignal.name == 'v':
                     vm = analogsignal
         return vm
     
 
-    def get_conductance(self, num_files=2):
+    def get_conductance(self, num_files=2, trial=0):
         """
         Returns a neo.core.analogsignal.AnalogSignal representing the synaptic conductance of all neurons, regardless
         of their type.
@@ -140,7 +144,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             file_path   = self.get_file_path(neuron_type=neuron_type)
             PyNN_file   = open(file_path, "rb")
             loaded      = pickle.load(PyNN_file)
-            seg         = loaded.segments[0] #we suppose there is only one segment
+            seg         = loaded.segments[trial] #we suppose there is only one segment
             for analogsignal in seg.analogsignals:
                 if analogsignal.name == 'gsyn_exc':
                     gsyn_exc = analogsignal
@@ -150,7 +154,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             file_path   = self.get_file_path(neuron_type=neuron_type)
             PyNN_file   = open(file_path, "rb")
             loaded      = pickle.load(PyNN_file)
-            seg         = loaded.segments[0] #we suppose there is only one segment
+            seg         = loaded.segments[trial] #we suppose there is only one segment
             for analogsignal in seg.analogsignals:
                 if analogsignal.name == 'gsyn_inh':
                     gsyn_inh = analogsignal
@@ -164,14 +168,14 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             file_path   = self.get_file_path(neuron_type=neuron_type)
             PyNN_file   = open(file_path, "rb")
             loaded      = pickle.load(PyNN_file)
-            seg         = loaded.segments[0] #we suppose there is only one segment
+            seg         = loaded.segments[trial] #we suppose there is only one segment
             for analogsignal in seg.analogsignals:
                 if analogsignal.name == 'gsyn':
                     gsyn = analogsignal
         return gsyn
     
     
-    def get_spike_trains(self, num_files=2):
+    def get_spike_trains(self, num_files=2, trial=0):
         """
         Returns a list of neo.core.SpikeTrain elements representing the spike trains of all neurons, regardless
         of their type.
@@ -186,7 +190,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             file_path   = self.get_file_path(neuron_type=neuron_type)
             PyNN_file   = open(file_path, "rb")
             loaded      = pickle.load(PyNN_file)
-            seg         = loaded.segments[0] #we suppose there is only one segment
+            seg         = loaded.segments[trial] #we suppose there is only one segment
             spiketrains_exc = seg.spiketrains
             
             ### INHIBITORY NEURONS
@@ -194,7 +198,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             file_path   = self.get_file_path(neuron_type=neuron_type)
             PyNN_file   = open(file_path, "rb")
             loaded      = pickle.load(PyNN_file)
-            seg         = loaded.segments[0] #we suppose there is only one segment
+            seg         = loaded.segments[trial] #we suppose there is only one segment
             spiketrains_inh = seg.spiketrains
 
             ### ALL NEURONS
@@ -204,7 +208,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             file_path   = self.get_file_path(neuron_type=neuron_type)
             PyNN_file   = open(file_path, "rb")
             loaded      = pickle.load(PyNN_file)
-            seg         = loaded.segments[0] #we suppose there is only one segment
+            seg         = loaded.segments[trial] #we suppose there is only one segment
             spiketrains = seg.spiketrains
         return spiketrains
 
@@ -357,7 +361,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             valid_dist       = np.heaviside(inv_dist-1./self.reach, 1) #array of neurons that are within the reach
             vm               = np.multiply(vm, valid_dist)             #vms of neurons that are out of the reach are null
 
-        f, coherence_array = coherence(LFP, vm, axis=0, nperseg=int(2**12), fs=1000./dt)
+        f, coherence_array  = coherence(LFP, vm, axis=0, nperseg=int(2**12), fs=1000./dt)
         meancoherence_array = np.average(coherence_array, axis=1)
         coherencestd_array  = np.std(coherence_array, axis=1)
         return meancoherence_array, f, coherencestd_array
@@ -369,10 +373,10 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         The neurons are supposed to be excitated by a sinusoidal input of 1s, starting 250ms before the selected window.
         Returns the Phase-Lock value and the corresponding frequencies.
         """
-        spiketrain = self.get_spike_train()
-        num_spikes = len(spiketrain)
-        valid_times1 = np.heaviside(spiketrain-(start+offset)*np.ones(num_spikes), 1)
-        valid_times2 = np.heaviside((start+duration)*np.ones(num_spikes)-spiketrain, 1)
+        spiketrain   = self.get_spike_train()
+        num_spikes   = len(spiketrain)
+        valid_times1 = np.heaviside(spiketrain-(start+offset)*np.ones(num_spikes), 1)   #spikes that occured after a certain time
+        valid_times2 = np.heaviside((start+duration)*np.ones(num_spikes)-spiketrain, 1) #spikes that occured before the maximum admitted time
         valid_times  = np.multiply(valid_times1, valid_times2)
 
         selected_spikes = np.multiply(spiketrain, valid_times)
