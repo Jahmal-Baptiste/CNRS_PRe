@@ -48,6 +48,7 @@ print("\nEXCITATORY NEURONS\n")
     
 PyNN_file = open("./Results/20190718/VAbenchmarks_COBA_exc_neuron_np1_20190718-201157.pkl", "rb")
 loaded    = pickle.load(PyNN_file)
+print(len(loaded))
 seg       = loaded.segments[0] #there is only one segment
 
 #####################
