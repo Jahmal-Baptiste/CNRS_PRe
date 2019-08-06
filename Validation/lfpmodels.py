@@ -83,7 +83,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         return file_path
     
 
-    def get_membrane_potential(self, num_files=2, trial=0):
+    def get_membrane_potential(self, trial=0, num_files=2):
         """
         Returns a neo.core.analogsignal.AnalogSignal representing the membrane potential of all neurons, regardless
         of their type.
@@ -129,7 +129,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         return vm
     
 
-    def get_conductance(self, num_files=2, trial=0):
+    def get_conductance(self, trial=0, num_files=2):
         """
         Returns a neo.core.analogsignal.AnalogSignal representing the synaptic conductance of all neurons, regardless
         of their type.
@@ -175,7 +175,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         return gsyn
     
     
-    def get_spike_trains(self, num_files=2, trial=0):
+    def get_spike_trains(self, trial=0, num_files=2):
         """
         Returns a list of neo.core.SpikeTrain elements representing the spike trains of all neurons, regardless
         of their type.
@@ -213,8 +213,8 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         return spiketrains
 
     
-    def get_spike_train(self):
-        global_spiketrain = list(chain.from_iterable(spiketrain for spiketrain in self.get_spike_trains()))
+    def get_spike_train(self, trial=0):
+        global_spiketrain = list(chain.from_iterable(spiketrain for spiketrain in self.get_spike_trains(trial=trial)))
         global_spiketrain.sort()
         return global_spiketrain
 
@@ -228,8 +228,8 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         Calculates and returns the 2D-array of the LFP.
         The first dimension corresponds to the electrodes.
         """
-        vm               = self.get_membrane_potential()
-        gsyn             = self.get_conductance()
+        vm               = self.get_membrane_potential(trial=0)
+        gsyn             = self.get_conductance(trial=0)
         neuron_positions = self.get_positions()
 
         num_neurons     = vm.shape[1] #equals to gsyn.shape[1]
@@ -267,7 +267,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         Function that assigns positions to the neurons if they do not have.
         Only works if they have a 2D structure.
         """
-        num_neurons = len(self.get_spike_trains)
+        num_neurons = len(self.get_spike_trains(trial=0))
         positions   = np.multiply(self.dimensions, np.random.rand(num_neurons, self.dimensionnality)-0.5)
         return positions
     
@@ -286,7 +286,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         start_index    = int(start/dt)
         duration_index = int(duration/dt)
 
-        vm               = self.get_membrane_potential()
+        vm               = self.get_membrane_potential(trial=0)
         neuron_positions = self.get_positions()
 
         num_neurons     = vm.shape[1]
@@ -314,7 +314,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         start_index    = int(start/dt)
         duration_index = int(duration/dt)
 
-        vm  = self.get_membrane_potential()
+        vm  = self.get_membrane_potential(trial=0)
         vm  = vm[start_index:start_index+duration_index, :]
         LFP = np.reshape(self.produce_local_field_potential()[0, start_index:start_index+duration_index], (duration_index+1,))
         
@@ -346,7 +346,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         start_index    = int(start/dt)
         duration_index = int(duration/dt)
 
-        vm  = self.get_membrane_potential()
+        vm  = self.get_membrane_potential(trial=0)
         vm  = vm[start_index:start_index+duration_index, :]
         LFP = np.reshape(self.produce_local_field_potential()[0, start_index:start_index+duration_index], (duration_index+1,))
         

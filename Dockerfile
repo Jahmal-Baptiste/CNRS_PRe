@@ -29,9 +29,8 @@ RUN apt-get autoremove -y && \
     apt-get clean
 
 #######################################################
-WORKDIR $HOME
-RUN git clone -b merged_JA_DG https://github.com/Jahmal-Baptiste/CNRS_PRe.git Mozaik
-WORKDIR $HOME/mozaik
+RUN git clone --branch=merged_JA_DG https://github.com/dguarino/mozaik /media/Data/Scolarite/ENSTA/Stages/PRe_Windows/Environnement_de_travail/Mozaik
+WORKDIR /media/Data/Scolarite/ENSTA/Stages/PRe_Windows/Environnement_de_travail/Mozaik
 RUN python setup.py install
 
 # Simple test:
@@ -41,5 +40,4 @@ RUN python setup.py install
 
 #######################################################
 # T2
-WORKDIR $HOME
-RUN git clone -b merged_JA_DG https://github.com/Jahmal-Baptiste/CNRS_PRe.git T2
+RUN git clone --branch=merged_JA_DG https://github.com/dguarino/T2 /media/Data/Scolarite/ENSTA/Stages/PRe_Windows/Environnement_de_travail/T2
