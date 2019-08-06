@@ -1,0 +1,8 @@
+[submodule "T2"]
+	path = T2
+	url = https://github.com/dguarino/T2
+	branch = merged_JA_DG
+[submodule "mozaik"]
+	path = mozaik
+	url = https://github.com/dguarino/mozaik
+	branch = merged_JA_DG
