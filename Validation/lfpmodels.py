@@ -41,6 +41,22 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         self.sigma               = sigma               #parameter in the Coulomb law's formula (in S/m)
         self.directory_PUREPATH  = PurePath()
         
+        ### COMPUTATION OF THE NUMBER OF SEGMENTS
+        self.set_directory_path()
+        if self.network_model == "T2":
+            neuron_type = "all"
+        elif self.network_model == "VA":
+            neuron_type = "exc"
+        else:
+            raise ValueError("Only the T2 and the Voggels-Abott models are supported.")
+        file_path   = self.get_file_path(neuron_type=neuron_type)
+        PyNN_file   = open(file_path, "rb")
+        block       = pickle.load(PyNN_file)
+        
+        self.num_trials  = len(block.segments)         #number of segments corresponding to the same experiment
+        self.num_neurons = 0                           #number of neurons computed - will be properly initialized during LFP computation
+        
+        ### VERIFICATION IF THE ELECTRODE(S) ARE "INSIDE" THE NETWORK
         for e_pos in electrode_positions:
             if max(abs(e_pos))+self.reach <= self.dimensions/2.:
                 raise ValueError("Wrong electrode position! Must have its reach zone in the network.")
@@ -97,8 +113,8 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             neuron_type = "exc"
             file_path   = self.get_file_path(neuron_type=neuron_type)
             PyNN_file   = open(file_path, "rb")
-            loaded      = pickle.load(PyNN_file)
-            seg         = loaded.segments[trial] #we suppose there is only one segment
+            block       = pickle.load(PyNN_file)
+            seg         = block.segments[trial] #we suppose there is only one segment
             for analogsignal in seg.analogsignals:
                 if analogsignal.name == 'v':
                     vm_exc = analogsignal
@@ -107,8 +123,8 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             neuron_type = "inh"
             file_path   = self.get_file_path(neuron_type=neuron_type)
             PyNN_file   = open(file_path, "rb")
-            loaded      = pickle.load(PyNN_file)
-            seg         = loaded.segments[trial] #we suppose there is only one segment
+            block       = pickle.load(PyNN_file)
+            seg         = block.segments[trial] #we suppose there is only one segment
             for analogsignal in seg.analogsignals:
                 if analogsignal.name == 'v':
                     vm_inh = analogsignal
@@ -121,8 +137,8 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             neuron_type = "all"
             file_path   = self.get_file_path(neuron_type=neuron_type)
             PyNN_file   = open(file_path, "rb")
-            loaded      = pickle.load(PyNN_file)
-            seg         = loaded.segments[trial] #we suppose there is only one segment
+            block       = pickle.load(PyNN_file)
+            seg         = block.segments[trial] #we suppose there is only one segment
             for analogsignal in seg.analogsignals:
                 if analogsignal.name == 'v':
                     vm = analogsignal
@@ -143,8 +159,8 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             neuron_type = "exc"
             file_path   = self.get_file_path(neuron_type=neuron_type)
             PyNN_file   = open(file_path, "rb")
-            loaded      = pickle.load(PyNN_file)
-            seg         = loaded.segments[trial] #we suppose there is only one segment
+            block       = pickle.load(PyNN_file)
+            seg         = block.segments[trial] #we suppose there is only one segment
             for analogsignal in seg.analogsignals:
                 if analogsignal.name == 'gsyn_exc':
                     gsyn_exc = analogsignal
@@ -153,8 +169,8 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             neuron_type = "inh"
             file_path   = self.get_file_path(neuron_type=neuron_type)
             PyNN_file   = open(file_path, "rb")
-            loaded      = pickle.load(PyNN_file)
-            seg         = loaded.segments[trial] #we suppose there is only one segment
+            block       = pickle.load(PyNN_file)
+            seg         = block.segments[trial] #we suppose there is only one segment
             for analogsignal in seg.analogsignals:
                 if analogsignal.name == 'gsyn_inh':
                     gsyn_inh = analogsignal
@@ -167,8 +183,8 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             neuron_type = "all"
             file_path   = self.get_file_path(neuron_type=neuron_type)
             PyNN_file   = open(file_path, "rb")
-            loaded      = pickle.load(PyNN_file)
-            seg         = loaded.segments[trial] #we suppose there is only one segment
+            block       = pickle.load(PyNN_file)
+            seg         = block.segments[trial] #we suppose there is only one segment
             for analogsignal in seg.analogsignals:
                 if analogsignal.name == 'gsyn':
                     gsyn = analogsignal
@@ -189,16 +205,16 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             neuron_type = "exc"
             file_path   = self.get_file_path(neuron_type=neuron_type)
             PyNN_file   = open(file_path, "rb")
-            loaded      = pickle.load(PyNN_file)
-            seg         = loaded.segments[trial] #we suppose there is only one segment
+            block       = pickle.load(PyNN_file)
+            seg         = block.segments[trial] #we suppose there is only one segment
             spiketrains_exc = seg.spiketrains
             
             ### INHIBITORY NEURONS
             neuron_type = "inh"
             file_path   = self.get_file_path(neuron_type=neuron_type)
             PyNN_file   = open(file_path, "rb")
-            loaded      = pickle.load(PyNN_file)
-            seg         = loaded.segments[trial] #we suppose there is only one segment
+            block       = pickle.load(PyNN_file)
+            seg         = block.segments[trial] #we suppose there is only one segment
             spiketrains_inh = seg.spiketrains
 
             ### ALL NEURONS
@@ -207,8 +223,8 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             neuron_type = "all"
             file_path   = self.get_file_path(neuron_type=neuron_type)
             PyNN_file   = open(file_path, "rb")
-            loaded      = pickle.load(PyNN_file)
-            seg         = loaded.segments[trial] #we suppose there is only one segment
+            block       = pickle.load(PyNN_file)
+            seg         = block.segments[trial] #we suppose there is only one segment
             spiketrains = seg.spiketrains
         return spiketrains
 
@@ -223,18 +239,18 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
     #== LFP related methods =========================================================================================
     #================================================================================================================
     
-    def produce_local_field_potential(self):
+    def produce_local_field_potential(self, trial=0):
         """
         Calculates and returns the 2D-array of the LFP.
         The first dimension corresponds to the electrodes.
         """
-        vm               = self.get_membrane_potential(trial=0)
-        gsyn             = self.get_conductance(trial=0)
+        vm               = self.get_membrane_potential(trial=trial)
+        gsyn             = self.get_conductance(trial=trial)
         neuron_positions = self.get_positions()
 
-        num_neurons     = vm.shape[1] #equals to gsyn.shape[1]
-        num_time_points = vm.shape[0]
-        num_electrodes  = self.electrode_positions.shape[0]
+        self.num_neurons = vm.shape[1] #equals to gsyn.shape[1]
+        num_time_points  = vm.shape[0]
+        num_electrodes   = self.electrode_positions.shape[0]
         
         ones_array    = np.ones((num_electrodes, num_time_points, num_neurons))
 
@@ -276,7 +292,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
     #== test related methods ========================================================================================
     #================================================================================================================
     
-    def produce_vm_LFP_correlation(self, start=600, duration=1000, dt=0.1):
+    def produce_vm_LFP_correlation(self, trial=0, start=600, duration=1000, dt=0.1):
         """
         Calculates the correlation between the Vm of the closest neuron to the (first) electrode and the LFP signal
         recorded at this electrode.
@@ -286,12 +302,11 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         start_index    = int(start/dt)
         duration_index = int(duration/dt)
 
-        vm               = self.get_membrane_potential(trial=0)
+        vm               = self.get_membrane_potential(trial=trial)
         neuron_positions = self.get_positions()
 
-        num_neurons     = vm.shape[1]
         num_electrodes  = self.electrode_positions.shape[0]
-        inv_dist        = nf.electrode_neuron_inv_dist(num_electrodes, num_neurons,
+        inv_dist        = nf.electrode_neuron_inv_dist(num_electrodes, self.num_neurons,
                                                        self.electrode_positions, neuron_positions,
                                                        self.reach, self.dimensionnality)
         closest_neuron = np.argmax(inv_dist)
@@ -304,7 +319,8 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         return corr, corr_time_points
     
 
-    def produce_vm_LFP_zerolagcorrelations(self, withinreach=True, start=600, duration=1000, dt=0.1):
+    def produce_vm_LFP_zerolagcorrelations(self, start=600, duration=1000, dt=0.1,
+                                           trial_average=True, trial=0, withinreach=True):
         """
         Calculates the zero-lag correlations between the neurons' membrane potentials and the LFP.
         Interesting plots to do with this data can be:
@@ -314,29 +330,39 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         start_index    = int(start/dt)
         duration_index = int(duration/dt)
 
-        vm  = self.get_membrane_potential(trial=0)
-        vm  = vm[start_index:start_index+duration_index, :]
-        LFP = np.reshape(self.produce_local_field_potential()[0, start_index:start_index+duration_index], (duration_index+1,))
+        if trial_average == True:
+            trials = self.num_trials
+        else:
+            trials = trial
         
-        ### ELIMINATION OF THE CONTRIBUTION OF NEURONS THAT ARE OUT OF THE REACH ZONE
-        if withinreach:
-            num_neurons      = vm.shape[1]
-            num_electrodes   = self.electrode_positions.shape[0]
-            neuron_positions = self.get_positions()
-            inv_dist         = nf.electrode_neuron_inv_dist(num_electrodes, num_neurons,
-                                                            self.electrode_positions, neuron_positions,
-                                                            self.reach, self.dimensionnality)
-            valid_dist       = np.heaviside(inv_dist-1./self.reach, 1) #array of neurons that are within the reach
-            vm               = np.multiply(vm, valid_dist)             #vms of neurons that are out of the reach are null
+        zerolagcorrelations_array = np.zeros((trials, self.num_neurons))
+        for iteration_trial in range(trials):
+            vm  = self.get_membrane_potential(trial=iteration_trial)
+            vm  = vm[start_index:start_index+duration_index, :]
+            LFP = np.reshape(self.produce_local_field_potential(trial=iteration_trial)[0, start_index:start_index+duration_index],
+                             (duration_index+1,))
 
-        def zerolagtcorrelationtoLFP(v):
-            return crsscorr.zerolagcorrelation(v, LFP)
-        
-        zerolagcorrelations = np.apply_along_axis(zerolagtcorrelationtoLFP, axis=0, arr=vm)
+            def zerolagtcorrelationtoLFP(v):
+                return crsscorr.zerolagcorrelation(v, LFP)
+            
+            ### ELIMINATION OF THE CONTRIBUTION OF NEURONS THAT ARE OUT OF THE REACH ZONE
+            if withinreach:
+                num_electrodes   = self.electrode_positions.shape[0]
+                neuron_positions = self.get_positions()
+                inv_dist         = nf.electrode_neuron_inv_dist(num_electrodes, self.num_neurons,
+                                                                self.electrode_positions, neuron_positions,
+                                                                self.reach, self.dimensionnality)
+                valid_dist       = np.heaviside(inv_dist-1./self.reach, 1) #array of neurons that are within the reach
+                vm               = np.multiply(vm, valid_dist)             #vms of neurons that are out of the reach are null
+            
+            zerolagcorrelations_array[iteration_trial, :] = np.apply_along_axis(zerolagtcorrelationtoLFP, axis=0, arr=vm)
+
+        zerolagcorrelations = np.average(zerolagcorrelations_array, axis=0)
+
         return zerolagcorrelations #if neurons=="reach", neurons that are out of the reach zone have a null correlation with the LFP
 
 
-    def produce_vm_LFP_meancoherence(self, withinreach=True, start=600, duration=1000, dt=0.1):
+    def produce_vm_LFP_meancoherence(self, trial=0, withinreach=True, start=600, duration=1000, dt=0.1):
         """
         Calculates the mean coherence between the neurons' membrane potentials and the LFP.
         returns the mean coherence, the corresponding frequencies (in Hz) and the standard deviation error for each
@@ -346,16 +372,16 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         start_index    = int(start/dt)
         duration_index = int(duration/dt)
 
-        vm  = self.get_membrane_potential(trial=0)
+        vm  = self.get_membrane_potential(trial=trial)
         vm  = vm[start_index:start_index+duration_index, :]
-        LFP = np.reshape(self.produce_local_field_potential()[0, start_index:start_index+duration_index], (duration_index+1,))
+        LFP = np.reshape(self.produce_local_field_potential(trial=trial)[0, start_index:start_index+duration_index],
+                         (duration_index+1,))
         
         ### ELIMINATION OF THE CONTRIBUTION OF NEURONS THAT ARE OUT OF THE REACH ZONE
         if withinreach:
-            num_neurons      = vm.shape[1]
             num_electrodes   = self.electrode_positions.shape[0]
             neuron_positions = self.get_positions()
-            inv_dist         = nf.electrode_neuron_inv_dist(num_electrodes, num_neurons,
+            inv_dist         = nf.electrode_neuron_inv_dist(num_electrodes, self.num_neurons,
                                                             self.electrode_positions, neuron_positions,
                                                             self.reach, self.dimensionnality)
             valid_dist       = np.heaviside(inv_dist-1./self.reach, 1) #array of neurons that are within the reach
@@ -367,45 +393,55 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         return meancoherence_array, f, coherencestd_array
     
 
-    def produce_phase_lock_value(self, start=525, offset=250, duration=1000, dt=0.1):
+    def produce_phase_lock_value(self, start=525, offset=250, duration=1000, dt=0.1, 
+                                 trial_average=True, trial=0):
         """
         Calculates the Phase-Lock value for the spikes occuring in a 750ms period of time.
         The neurons are supposed to be excitated by a sinusoidal input of 1s, starting 250ms before the selected window.
         Returns the Phase-Lock value and the corresponding frequencies.
         """
-        spiketrain   = self.get_spike_train()
-        num_spikes   = len(spiketrain)
-        valid_times1 = np.heaviside(spiketrain-(start+offset)*np.ones(num_spikes), 1)   #spikes that occured after a certain time
-        valid_times2 = np.heaviside((start+duration)*np.ones(num_spikes)-spiketrain, 1) #spikes that occured before the maximum admitted time
-        valid_times  = np.multiply(valid_times1, valid_times2)
-
-        selected_spikes = np.multiply(spiketrain, valid_times)
-        selected_spikes = selected_spikes[selected_spikes>0]
-
-        fs       = 1000./dt                                  #sampling frequency
-        LFP      = self.produce_local_field_potential()
-        #LFP_filt = butter_lowpass_filter(LFP, 170., fs)
-
-        window       = 150                                   #ms, size of the window in which the LFP will have its Fourier transformations
+        if trial_average:
+            trials = self.num_trials
+        else:
+            trials = trial
+        
+        fs           = 1000./dt                           #sampling frequency
+        window       = 150                                #ms, size of the window in which the LFP will have its Fourier transformations
         window_index = int(window/dt)
         window_width = window_index//2
-        w            = hanning(window_index+1)               #150 ms window with a 0,1 ms interval
-        N_max        = 500                                   #just an arbitrary value for the moment
-        N_s = min(selected_spikes.shape[0], N_max)               #security measure
-        PLv          = np.zeros(window_index+1, dtype=float) #Phase-Lock value array, empty for the moment
+        w            = hanning(window_index+1)            #150 ms window with a 0,1 ms interval
+        N_max        = 500                                #just an arbitrary value for the moment
+        PLv_array    = np.zeros((trials, window_index+1),
+                                dtype=float)              #multi-trial Phase-Lock value array, empty for the moment
 
-        for t_index in mf.random_list(N_s, selected_spikes.shape[0], minimum=0):
-            t_s       = selected_spikes[t_index]                                         #time of spike occurence
-            t_s_index = int(10*t_s)                                                      #corresponding index for the arrays
-            #LFP_s     = LFP_filt[t_s_index - window_width : t_s_index + window_width+1]  #LFP centered at the spike occurrence
-            LFP_s     = LFP[t_s_index - window_width : t_s_index + window_width+1]       #Non-filtered version
-            wLFP_s    = np.multiply(w, LFP_s)                                            #centered LFP multiplied by the Hanning window
-            FT_s      = fft(wLFP_s)                                                      #Fourier transform of this weighted LFP
-            nFT_s     = np.divide(FT_s, np.abs(FT_s))                                    #normalized Fourier transform
-            PLv       = np.add(PLv, nFT_s)                                               #contribution to the PLv added
+        for iteration_trial in range(trials):
+            spiketrain   = self.get_spike_train(trial=iteration_trial)
+            num_spikes   = len(spiketrain)
+            valid_times1 = np.heaviside(spiketrain-(start+offset)*np.ones(num_spikes), 1)   #spikes that occured after a certain time
+            valid_times2 = np.heaviside((start+duration)*np.ones(num_spikes)-spiketrain, 1) #spikes that occured before the maximum admitted time
+            valid_times  = np.multiply(valid_times1, valid_times2)
 
-        PLv  = np.abs(PLv)/N_s                                            #normalized module, according to the paper
-        PLv  = PLv[:(PLv.shape[0])//2]                                    #only the first half is relevant
+            selected_spikes = np.multiply(spiketrain, valid_times)
+            selected_spikes = selected_spikes[selected_spikes>0]
+
+            LFP      = self.produce_local_field_potential(trial=iteration_trial)
+            #LFP_filt = butter_lowpass_filter(LFP, 170., fs)
+
+            N_s = min(selected_spikes.shape[0], N_max)  #security measure
+
+            for t_index in mf.random_list(N_s, selected_spikes.shape[0], minimum=0):
+                t_s       = selected_spikes[t_index]                                         #time of spike occurence
+                t_s_index = int(10*t_s)                                                      #corresponding index for the arrays
+                #LFP_s     = LFP_filt[t_s_index - window_width : t_s_index + window_width+1]  #LFP centered at the spike occurrence
+                LFP_s     = LFP[t_s_index - window_width : t_s_index + window_width+1]       #Non-filtered version
+                wLFP_s    = np.multiply(w, LFP_s)                                            #centered LFP multiplied by the Hanning window
+                FT_s      = fft(wLFP_s)                                                      #Fourier transform of this weighted LFP
+                nFT_s     = np.divide(FT_s, np.abs(FT_s))                                    #normalized Fourier transform
+                PLv_array[iteration_trial, :] = np.add(PLv_array[iteration_trial, :], nFT_s)       #contribution to the PLv added
+
+            PLv_array[iteration_trial, :]  = np.abs(PLv_array[iteration_trial, :])/N_s         #normalized module, according to the paper
+            
+        PLv  = np.average(PLv_array, axis=0)
+        PLv  = PLv[:(PLv.shape[0])//2] #only the first half is relevant
         fPLv = (0.5*fs/PLv.shape[0])*np.arange(PLv.shape[0], dtype=float) #frequencies of the PLv
-
         return PLv, fPLv
