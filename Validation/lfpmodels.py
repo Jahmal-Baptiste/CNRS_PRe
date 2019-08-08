@@ -44,16 +44,12 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         ### COMPUTATION OF THE NUMBER OF SEGMENTS
         self.set_directory_path()
         if self.network_model == "T2":
-            neuron_type = "all"
+            self.num_trials = 11
         elif self.network_model == "VA":
-            neuron_type = "exc"
+            self.num_trials = 1
         else:
             raise ValueError("Only the T2 and the Voggels-Abott models are supported.")
-        file_path   = self.get_file_path(neuron_type=neuron_type)
-        PyNN_file   = open(file_path, "rb")
-        block       = pickle.load(PyNN_file)
         
-        self.num_trials  = len(block.segments)         #number of segments corresponding to the same experiment
         self.num_neurons = 0                           #number of neurons computed - will be properly initialized during LFP computation
         
         ### VERIFICATION IF THE ELECTRODE(S) ARE "INSIDE" THE NETWORK
@@ -68,21 +64,24 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
     #== methods related to raw available data =======================================================================
     #================================================================================================================
 
-    def set_directory_path(self, parent_directory="../Exemples/Results/", date="20190718"):
+    def set_directory_path(self, date="20190718"):
         if self.network_model == "VA":
+            parent_directory="../Exemples/Results/"
+            
             directory_path = parent_directory + date
             directory_PATH = Path(directory_path)
             
             if not directory_PATH.exists():
                 sys.exit("Directory does not exist!")
             self.directory_PUREPATH = PurePath(directory_path)
+
         elif self.network_model == "T2":
-            raise NotImplementedError("Only the Voggels-Abbott model is implemented.")
+            parent_directory = "../T2/ThalamoCorticalModel_data_size_____/"
         else:
             raise NotImplementedError("Only the T2 and the Voggels-Abott models are supported.")
             
     
-    def get_file_path(self, time="201157", neuron_type=""):
+    def get_file_path(self, segment_number="0", time="201157", neuron_type=""):
         if self.network_model == "VA":
             if neuron_type == "":
                 raise ValueError("Must specify a neuron type.")
@@ -92,14 +91,19 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             file_PATH = Path(file_path)
             if not file_PATH.exists():
                 sys.exit("File name does not exist! (Try checking the time argument.)")
+        
         elif self.network_model == "T2":
-            raise NotImplementedError("Only the Voggels-Abbott model is implemented.")
+            file_path = str(self.directory_PUREPATH) + "Segment{0}.pickle".format(segment_number)
+
+            file_PATH = Path(file_path)
+            if not file_PATH.exists():
+                sys.exit("File name does not exist! (Try checking segment number.)")
         else:
             raise NotImplementedError("Only the T2 and the Voggels-Abott models are supported.")
         return file_path
     
 
-    def get_membrane_potential(self, trial=0, num_files=2):
+    def get_membrane_potential(self, trial=0):
         """
         Returns a neo.core.analogsignal.AnalogSignal representing the membrane potential of all neurons, regardless
         of their type.
@@ -108,13 +112,13 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         """
         self.set_directory_path()
         
-        if num_files == 2:
+        if self.network_model == "VA":
             ### EXCITATORY NEURONS
             neuron_type = "exc"
             file_path   = self.get_file_path(neuron_type=neuron_type)
             PyNN_file   = open(file_path, "rb")
             block       = pickle.load(PyNN_file)
-            seg         = block.segments[trial] #we suppose there is only one segment
+            seg         = block.segments[trial] #chosen segment
             for analogsignal in seg.analogsignals:
                 if analogsignal.name == 'v':
                     vm_exc = analogsignal
@@ -124,7 +128,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             file_path   = self.get_file_path(neuron_type=neuron_type)
             PyNN_file   = open(file_path, "rb")
             block       = pickle.load(PyNN_file)
-            seg         = block.segments[trial] #we suppose there is only one segment
+            seg         = block.segments[trial] #chosen segment
             for analogsignal in seg.analogsignals:
                 if analogsignal.name == 'v':
                     vm_inh = analogsignal
@@ -134,18 +138,39 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             vm       = neo.core.AnalogSignal(vm_array, units=vm_exc.units, t_start=vm_exc.t_start,
                                              sampling_rate=vm_exc.sampling_rate)
         else:
-            neuron_type = "all"
-            file_path   = self.get_file_path(neuron_type=neuron_type)
+            ### TO CHANGE ###
+            '''
+            All this has to be changed...
+            The pickle files are not organised in blocks but in segments, and these segments correspond to a certain
+            type of neuron in a given layer... I must hence find out which segments correspond to the same experiment
+            and join them together here. Not forgetting to mention the multiple trials for the same experiment.
+            '''
+            ### EXCITATORY NEURONS
+            seg_num     = str(10*trial+7)
+            file_path   = self.get_file_path(segment_number=seg_num)
             PyNN_file   = open(file_path, "rb")
-            block       = pickle.load(PyNN_file)
-            seg         = block.segments[trial] #we suppose there is only one segment
+            seg         = pickle.load(PyNN_file)
             for analogsignal in seg.analogsignals:
                 if analogsignal.name == 'v':
-                    vm = analogsignal
+                    vm_exc = analogsignal
+            
+            ### INHIBITORY NEURONS
+            seg_num     = str(10*trial+6)
+            file_path   = self.get_file_path(segment_number=seg_num)
+            PyNN_file   = open(file_path, "rb")
+            seg         = pickle.load(PyNN_file)
+            for analogsignal in seg.analogsignals:
+                if analogsignal.name == 'v':
+                    vm_inh = analogsignal
+            
+            ### ALL NEURONS
+            vm_array = np.concatenate(vm_exc, vm_inh, axis=1)
+            vm       = neo.core.AnalogSignal(vm_array, units=vm_exc.units, t_start=vm_exc.t_start,
+                                             sampling_rate=vm_exc.sampling_rate)
         return vm
     
 
-    def get_conductance(self, trial=0, num_files=2):
+    def get_conductance(self, trial=0):
         """
         Returns a neo.core.analogsignal.AnalogSignal representing the synaptic conductance of all neurons, regardless
         of their type.
@@ -154,13 +179,13 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         """
         self.set_directory_path()
         
-        if num_files == 2:
+        if self.network_model == "VA":
             ### EXCITATORY NEURONS
             neuron_type = "exc"
             file_path   = self.get_file_path(neuron_type=neuron_type)
             PyNN_file   = open(file_path, "rb")
             block       = pickle.load(PyNN_file)
-            seg         = block.segments[trial] #we suppose there is only one segment
+            seg         = block.segments[trial] #chosen segment
             for analogsignal in seg.analogsignals:
                 if analogsignal.name == 'gsyn_exc':
                     gsyn_exc = analogsignal
@@ -170,7 +195,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             file_path   = self.get_file_path(neuron_type=neuron_type)
             PyNN_file   = open(file_path, "rb")
             block       = pickle.load(PyNN_file)
-            seg         = block.segments[trial] #we suppose there is only one segment
+            seg         = block.segments[trial] #chosen segment
             for analogsignal in seg.analogsignals:
                 if analogsignal.name == 'gsyn_inh':
                     gsyn_inh = analogsignal
@@ -180,18 +205,24 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             gsyn       = neo.core.AnalogSignal(gsyn_array, units=gsyn_exc.units, t_start=gsyn_exc.t_start,
                                                sampling_rate=gsyn_exc.sampling_rate)
         else:
-            neuron_type = "all"
-            file_path   = self.get_file_path(neuron_type=neuron_type)
+            ### TO CHANGE ###
+            '''
+            All this has to be changed...
+            The pickle files are not organised in blocks but in segments, and these segments correspond to a certain
+            type of neuron in a given layer... I must hence find out which segments correspond to the same experiment
+            and join them together here. Not forgetting to mention the multiple trials for the same experiment.
+            '''
+            seg_num     = str(trial)
+            file_path   = self.get_file_path(segment_number=seg_num)
             PyNN_file   = open(file_path, "rb")
-            block       = pickle.load(PyNN_file)
-            seg         = block.segments[trial] #we suppose there is only one segment
+            seg         = pickle.load(PyNN_file)
             for analogsignal in seg.analogsignals:
                 if analogsignal.name == 'gsyn':
                     gsyn = analogsignal
         return gsyn
     
     
-    def get_spike_trains(self, trial=0, num_files=2):
+    def get_spike_trains(self, trial=0):
         """
         Returns a list of neo.core.SpikeTrain elements representing the spike trains of all neurons, regardless
         of their type.
@@ -200,13 +231,13 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         """
         self.set_directory_path()
         
-        if num_files == 2:
+        if self.network_model == "VA":
             ### EXCITATORY NEURONS
             neuron_type = "exc"
             file_path   = self.get_file_path(neuron_type=neuron_type)
             PyNN_file   = open(file_path, "rb")
             block       = pickle.load(PyNN_file)
-            seg         = block.segments[trial] #we suppose there is only one segment
+            seg         = block.segments[trial] #chosen segment
             spiketrains_exc = seg.spiketrains
             
             ### INHIBITORY NEURONS
@@ -214,17 +245,23 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             file_path   = self.get_file_path(neuron_type=neuron_type)
             PyNN_file   = open(file_path, "rb")
             block       = pickle.load(PyNN_file)
-            seg         = block.segments[trial] #we suppose there is only one segment
+            seg         = block.segments[trial] #chosen segment
             spiketrains_inh = seg.spiketrains
 
             ### ALL NEURONS
             spiketrains = spiketrains_exc + spiketrains_inh
         else:
-            neuron_type = "all"
-            file_path   = self.get_file_path(neuron_type=neuron_type)
+            ### TO CHANGE ###
+            '''
+            All this has to be changed...
+            The pickle files are not organised in blocks but in segments, and these segments correspond to a certain
+            type of neuron in a given layer... I must hence find out which segments correspond to the same experiment
+            and join them together here. Not forgetting to mention the multiple trials for the same experiment.
+            '''
+            seg_num     = str(trial)
+            file_path   = self.get_file_path(segment_number=seg_num)
             PyNN_file   = open(file_path, "rb")
-            block       = pickle.load(PyNN_file)
-            seg         = block.segments[trial] #we suppose there is only one segment
+            seg         = pickle.load(PyNN_file)
             spiketrains = seg.spiketrains
         return spiketrains
 
