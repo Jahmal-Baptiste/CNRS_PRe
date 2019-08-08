@@ -81,7 +81,8 @@ class Vm_LFP_CorrelationTest(sciunit.Test):
     
     def generate_prediction(self, model):
         """It is rather straight foward."""
-        return model.produce_vm_LFP_correlation(start=600, duration=1000, dt=0.1)
+        return model.produce_vm_LFP_erolagcorrelations(start=600, duration=1000, dt=0.1,
+                                                       trial_average=True, trial=0, withinreach=True)
 
 
     def compute_score(self, observation, prediction):

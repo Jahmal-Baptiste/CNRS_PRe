@@ -34,7 +34,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         self.network_model       = network_model       #Voggels-Abbott for the moment
         self.space_dependency    = space_dependency    #Boolean indicating if the neurons' positions are available
         self.dimensionnality     = dimensionnality     #dimensionnality of the network - either 2 or 3 D
-        self.dimensions          = dimensions          #2,3D-array: leght, width and height (when exists) of the network (in m)
+        self.dimensions          = dimensions          #3D-array: leght, width and height of the network (in m)
         self.reach               = reach               #reach of the LFP (in m)
         np.transpose(electrode_positions)              #to have the the coordinates along the 0 axis, as opposed to the input state
         self.electrode_positions = electrode_positions #positions of the electrodes (in m)
@@ -58,7 +58,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         
         ### VERIFICATION IF THE ELECTRODE(S) ARE "INSIDE" THE NETWORK
         for e_pos in electrode_positions:
-            if max(abs(e_pos))+self.reach <= self.dimensions/2.:
+            if max(abs(e_pos))+self.reach <= self.dimensions[0]/2.:
                 raise ValueError("Wrong electrode position! Must have its reach zone in the network.")
         
         return super(CoulombModel, self).__init__(name, network_model, space_dependency, dimensionnality,
@@ -305,13 +305,14 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         vm               = self.get_membrane_potential(trial=trial)
         neuron_positions = self.get_positions()
 
-        num_electrodes  = self.electrode_positions.shape[0]
-        inv_dist        = nf.electrode_neuron_inv_dist(num_electrodes, self.num_neurons,
-                                                       self.electrode_positions, neuron_positions,
-                                                       self.reach, self.dimensionnality)
+        num_neurons    = vm.shape[1]
+        num_electrodes = self.electrode_positions.shape[0]
+        inv_dist       = nf.electrode_neuron_inv_dist(num_electrodes, self.num_neurons,
+                                                      self.electrode_positions, neuron_positions,
+                                                      self.reach, self.dimensionnality)[0, :]
         closest_neuron = np.argmax(inv_dist)
         selected_vm    = np.reshape(vm[start_index:start_index+duration_index+1, closest_neuron], (duration_index+1,))
-        selected_LFP   = np.reshape(self.produce_local_field_potential()[0, start_index:start_index+duration_index+1],
+        selected_LFP   = np.reshape(self.produce_local_field_potential(trial=trial)[0, start_index:start_index+duration_index+1],
                                     (duration_index+1,))
         
         corr             = crsscorr.constwindowcorrelation(selected_vm, selected_LFP)
@@ -326,6 +327,8 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         Interesting plots to do with this data can be:
         - histogram of the correlation distribution;
         - confrontation of the correlation values between a non-stimulated and stimulated state (for the same neurons).
+        The trial_average boolean tells if the correlations have to be averaged over the trials.
+        If not, the chosen trial is trial.
         """
         start_index    = int(start/dt)
         duration_index = int(duration/dt)
@@ -351,15 +354,15 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
                 neuron_positions = self.get_positions()
                 inv_dist         = nf.electrode_neuron_inv_dist(num_electrodes, self.num_neurons,
                                                                 self.electrode_positions, neuron_positions,
-                                                                self.reach, self.dimensionnality)
-                valid_dist       = np.heaviside(inv_dist-1./self.reach, 1) #array of neurons that are within the reach
-                vm               = np.multiply(vm, valid_dist)             #vms of neurons that are out of the reach are null
+                                                                self.reach, self.dimensionnality)[0, :]
+                valid_dist_neurons = np.heaviside(inv_dist-1./self.reach, 1) #array of neurons that are within the reach
+                vm                 = np.multiply(vm, valid_dist_neurons)     #vms of neurons that are out of the reach are null
             
             zerolagcorrelations_array[iteration_trial, :] = np.apply_along_axis(zerolagtcorrelationtoLFP, axis=0, arr=vm)
 
         zerolagcorrelations = np.average(zerolagcorrelations_array, axis=0)
 
-        return zerolagcorrelations #if neurons=="reach", neurons that are out of the reach zone have a null correlation with the LFP
+        return zerolagcorrelations #if withinreach==True, neurons that are out of the reach zone have a null correlation with the LFP
 
 
     def produce_vm_LFP_meancoherence(self, trial=0, withinreach=True, start=600, duration=1000, dt=0.1):
@@ -383,9 +386,9 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             neuron_positions = self.get_positions()
             inv_dist         = nf.electrode_neuron_inv_dist(num_electrodes, self.num_neurons,
                                                             self.electrode_positions, neuron_positions,
-                                                            self.reach, self.dimensionnality)
-            valid_dist       = np.heaviside(inv_dist-1./self.reach, 1) #array of neurons that are within the reach
-            vm               = np.multiply(vm, valid_dist)             #vms of neurons that are out of the reach are null
+                                                            self.reach, self.dimensionnality)[0, :]
+            valid_dist_neurons = np.heaviside(inv_dist-1./self.reach, 1) #array of neurons that are within the reach
+            vm                 = np.multiply(vm, valid_dist_neurons)     #vms of neurons that are out of the reach are null
 
         f, coherence_array  = coherence(LFP, vm, axis=0, nperseg=int(2**12), fs=1000./dt)
         meancoherence_array = np.average(coherence_array, axis=1)
@@ -394,11 +397,13 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
     
 
     def produce_phase_lock_value(self, start=525, offset=250, duration=1000, dt=0.1, 
-                                 trial_average=True, trial=0):
+                                 trial_average=True, trial=0, withinreach=True):
         """
         Calculates the Phase-Lock value for the spikes occuring in a 750ms period of time.
-        The neurons are supposed to be excitated by a sinusoidal input of 1s, starting 250ms before the selected window.
+        The neurons are supposed to be excitated by a sinusoidal input of 1s, starting 250ms before the selected epoch.
         Returns the Phase-Lock value and the corresponding frequencies.
+        The trial_average boolean tells if the Phase-Lock value has to be averaged over the trials.
+        If not, the chosen trial is trial.
         """
         if trial_average:
             trials = self.num_trials
@@ -424,7 +429,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             selected_spikes = np.multiply(spiketrain, valid_times)
             selected_spikes = selected_spikes[selected_spikes>0]
 
-            LFP      = self.produce_local_field_potential(trial=iteration_trial)
+            LFP      = self.produce_local_field_potential(trial=iteration_trial)[0, :]
             #LFP_filt = butter_lowpass_filter(LFP, 170., fs)
 
             N_s = min(selected_spikes.shape[0], N_max)  #security measure
@@ -445,3 +450,64 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         PLv  = PLv[:(PLv.shape[0])//2] #only the first half is relevant
         fPLv = (0.5*fs/PLv.shape[0])*np.arange(PLv.shape[0], dtype=float) #frequencies of the PLv
         return PLv, fPLv
+
+
+    def produce_spike_triggered_LFP(self, start=600, duration=1000, dt=0.1, window=200,
+                                    trial_average=True, trial=0):
+        """
+        Calculates the spike-triggered average of the LFP (stLFP) and arranges the results relative to the distance
+        from the electrode. The distances discriminating the neurons are (in mm): 0.4, 0.8, 1.2, 1.4 and 1.6.
+        Returns the stLFP for each distance interval and in a time interval around the spikes.
+        The stLFP is a 2D-array with the first dimension corresponding to the distance and the second, the time.
+        """
+        discrim_dist     = np.array([4e-4, 8e-4, 1.2e-3, 1.6e-3])
+        discrim_inv_dist = np.append(np.inf, np.power(discrim_dist, -1))
+        discrim_inv_dist = np.append(discrim_dist, 0.)
+
+        num_electrodes   = self.electrode_positions.shape[0]
+        neuron_positions = self.get_positions()
+        inv_dist         = nf.electrode_neuron_inv_dist(num_electrodes, self.num_neurons,
+                                                        self.electrode_positions, neuron_positions,
+                                                        self.reach, self.dimensionnality)[0, :]
+        
+        discrim_indexes    = [[], [], [], [], []]
+        num_dist_intervals = 5
+        for i in range(num_dist_intervals):
+            i_normalized_inv_dist = mf.door(inv_dist, discrim_inv_dist[i+1], discrim_inv_dist[i])
+            i_indexes  = np.argwhere(i_normalized_inv_dist == 1)
+            discrim_indexes[i].append(i_indexes.flatten().tolist())
+        
+        '''
+        Now I have discriminated the neurons according to their distance from the electrode (information stored in
+        their indexes in the list discrim_indexes), I can separate the stLFPs according to this criteria.
+        '''
+
+        if trial_average:
+            trials = self.num_trials
+        else:
+            trials = trial
+        
+        window_index = int(window/dt)
+        stLFP_array  = np.zeros((trials, num_dist_intervals, window_index+1))
+
+        for iteration_trial in range(trials):
+            ### LOOP ON THE TRIALS
+            spiketrains = self.get_spike_trains(trial=iteration_trial)
+            LFP         = self.produce_local_field_potential(trial=iteration_trial)[0, :]
+
+            for interval_index in range(num_dist_intervals):
+                ### LOOP ON THE DISTANCE INTERVALS
+                average_counter = 0
+                for neuron_index in discrim_indexes[interval_index]:
+                    ### LOOP ON THE NEURONS WITHIN A DISTANCE INTERVAL
+                    for t_s in spiketrains[neuron_index]: #maybe I can get rid of this loop... I don't like it...
+                        ### LOOP ON THE SPIKES OF A GIVEN NEURON
+                        t_s_index = int(t_s/dt)
+                        average_counte += 1
+                        stLFP_array[iteration_trial, interval_index, :] = np.add(
+                                                                       stLFP_array[iteration_trial, interval_index, :],
+                                                                       LFP[t_s-window_index//2:t_s_index+window_index//2+1])
+                stLFP_array[iteration_trial, interval_index, :] /= average_counter
+        
+        stLFP = np.average(stLFP_array, axis=0) #trial-average computation
+        return stLFP

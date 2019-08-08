@@ -15,6 +15,10 @@ def random_list(n, maximum, minimum=1):
     return rnd_list
 
 
+def door(x, x1, x2):
+    return np.multiply(np.heaviside(x-x1, 1), np.heaviside(x2-x, 0))
+
+
 def gaussian(x, mu=0, sigma=1):
     return 1./(np.sqrt(2.*np.pi)*sigma)*np.exp(-np.power((x-mu)/sigma, 2.)/2.)
 
