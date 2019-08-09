@@ -44,13 +44,15 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         ### COMPUTATION OF THE NUMBER OF SEGMENTS
         self.set_directory_path()
         if self.network_model == "T2":
-            self.num_trials = 11
+            self.num_trials = 11                       #number of trials for a same experiment
         elif self.network_model == "VA":
             self.num_trials = 1
         else:
             raise ValueError("Only the T2 and the Voggels-Abott models are supported.")
         
         self.num_neurons = 0                           #number of neurons computed - will be properly initialized during LFP computation
+        self.exc_counted = False
+        self.inh_counted = False
         
         ### VERIFICATION IF THE ELECTRODE(S) ARE "INSIDE" THE NETWORK
         for e_pos in electrode_positions:
@@ -76,7 +78,9 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             self.directory_PUREPATH = PurePath(directory_path)
 
         elif self.network_model == "T2":
-            parent_directory = "../T2/ThalamoCorticalModel_data_size_____/"
+            directory_path = "../T2/ThalamoCorticalModel_data_size_____/"
+
+            self.directory_PUREPATH = PurePath(directory_path)
         else:
             raise NotImplementedError("Only the T2 and the Voggels-Abott models are supported.")
             
@@ -103,7 +107,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         return file_path
     
 
-    def get_membrane_potential(self, trial=0):
+    def get_membrane_potential(self, trial=0, experiment="sin_stim"):
         """
         Returns a neo.core.analogsignal.AnalogSignal representing the membrane potential of all neurons, regardless
         of their type.
@@ -122,6 +126,9 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             for analogsignal in seg.analogsignals:
                 if analogsignal.name == 'v':
                     vm_exc = analogsignal
+            if self.exc_counted == False:
+                self.num_neurons += vm_exc.shape[1]
+                self.exc_counted  = True
             
             ### INHIBITORY NEURONS
             neuron_type = "inh"
@@ -132,6 +139,9 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             for analogsignal in seg.analogsignals:
                 if analogsignal.name == 'v':
                     vm_inh = analogsignal
+            if self.inh_counted == False:
+                self.num_neurons += vm_inh.shape[1]
+                self.inh_counted  = True
 
             ### ALL NEURONS
             vm_array = np.concatenate(vm_exc, vm_inh, axis=1)
@@ -145,23 +155,36 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             type of neuron in a given layer... I must hence find out which segments correspond to the same experiment
             and join them together here. Not forgetting to mention the multiple trials for the same experiment.
             '''
+            if experiment == "sin_stim":
+                data_int = 0
+            elif experiment == "blank_stim":
+                data_int = 5
+            else:
+                raise ValueError("The experiment argument must be either 'sin_stim' or 'blank_stim'.")
+            
             ### EXCITATORY NEURONS
-            seg_num     = str(10*trial+7)
+            seg_num     = str(10*trial+data_int+2)
             file_path   = self.get_file_path(segment_number=seg_num)
             PyNN_file   = open(file_path, "rb")
             seg         = pickle.load(PyNN_file)
             for analogsignal in seg.analogsignals:
                 if analogsignal.name == 'v':
                     vm_exc = analogsignal
+            if self.exc_counted == False:
+                self.num_neurons += vm_exc.shape[1]
+                self.exc_counted  = True
             
             ### INHIBITORY NEURONS
-            seg_num     = str(10*trial+6)
+            seg_num     = str(10*trial+data_int+1)
             file_path   = self.get_file_path(segment_number=seg_num)
             PyNN_file   = open(file_path, "rb")
             seg         = pickle.load(PyNN_file)
             for analogsignal in seg.analogsignals:
                 if analogsignal.name == 'v':
                     vm_inh = analogsignal
+            if self.inh_counted == False:
+                self.num_neurons += vm_inh.shape[1]
+                self.inh_counted  = True
             
             ### ALL NEURONS
             vm_array = np.concatenate(vm_exc, vm_inh, axis=1)
@@ -170,7 +193,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         return vm
     
 
-    def get_conductance(self, trial=0):
+    def get_conductance(self, trial=0, experiment="sin_stim"):
         """
         Returns a neo.core.analogsignal.AnalogSignal representing the synaptic conductance of all neurons, regardless
         of their type.
@@ -189,6 +212,9 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             for analogsignal in seg.analogsignals:
                 if analogsignal.name == 'gsyn_exc':
                     gsyn_exc = analogsignal
+            if self.exc_counted == False:
+                self.num_neurons += gsyn_exc.shape[1]
+                self.exc_counted  = True
             
             ### INHIBITORY NEURONS
             neuron_type = "inh"
@@ -199,6 +225,9 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             for analogsignal in seg.analogsignals:
                 if analogsignal.name == 'gsyn_inh':
                     gsyn_inh = analogsignal
+            if self.inh_counted == False:
+                self.num_neurons += gsyn_inh.shape[1]
+                self.inh_counted  = True
 
             ### ALL NEURONS
             gsyn_array = np.concatenate(gsyn_exc, gsyn_inh, axis=1)
@@ -212,6 +241,13 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             type of neuron in a given layer... I must hence find out which segments correspond to the same experiment
             and join them together here. Not forgetting to mention the multiple trials for the same experiment.
             '''
+            if experiment == "sin_stim":
+                data_int = 0
+            elif experiment == "blank_stim":
+                data_int = 5
+            else:
+                raise ValueError("The experiment argument must be either 'sin_stim' or 'blank_stim'.")
+            
             seg_num     = str(trial)
             file_path   = self.get_file_path(segment_number=seg_num)
             PyNN_file   = open(file_path, "rb")
@@ -222,7 +258,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         return gsyn
     
     
-    def get_spike_trains(self, trial=0):
+    def get_spike_trains(self, trial=0, experiment="sin_stim"):
         """
         Returns a list of neo.core.SpikeTrain elements representing the spike trains of all neurons, regardless
         of their type.
@@ -239,6 +275,9 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             block       = pickle.load(PyNN_file)
             seg         = block.segments[trial] #chosen segment
             spiketrains_exc = seg.spiketrains
+            if self.exc_counted == False:
+                self.num_neurons += len(spiketrains_exc)
+                self.exc_counted  = True
             
             ### INHIBITORY NEURONS
             neuron_type = "inh"
@@ -247,6 +286,9 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             block       = pickle.load(PyNN_file)
             seg         = block.segments[trial] #chosen segment
             spiketrains_inh = seg.spiketrains
+            if self.inh_counted == False:
+                self.num_neurons += len(spiketrains_inh)
+                self.inh_counted  = True
 
             ### ALL NEURONS
             spiketrains = spiketrains_exc + spiketrains_inh
@@ -258,11 +300,35 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             type of neuron in a given layer... I must hence find out which segments correspond to the same experiment
             and join them together here. Not forgetting to mention the multiple trials for the same experiment.
             '''
-            seg_num     = str(trial)
+            if experiment == "sin_stim":
+                data_int = 0
+            elif experiment == "blank_stim":
+                data_int = 5
+            else:
+                raise ValueError("The experiment argument must be either 'sin_stim' or 'blank_stim'.")
+
+            ### EXCITATORY NEURONS
+            seg_num     = str(10*trial+data_int+2)
             file_path   = self.get_file_path(segment_number=seg_num)
             PyNN_file   = open(file_path, "rb")
             seg         = pickle.load(PyNN_file)
-            spiketrains = seg.spiketrains
+            spiketrains_exc = seg.spiketrains
+            if self.exc_counted == False:
+                self.num_neurons += len(spiketrains_exc)
+                self.exc_counted  = True
+            
+            ### INHIBITORY NEURONS
+            seg_num     = str(10*trial+data_int+1)
+            file_path   = self.get_file_path(segment_number=seg_num)
+            PyNN_file   = open(file_path, "rb")
+            seg         = pickle.load(PyNN_file)
+            spiketrains_inh = seg.spiketrains
+            if self.inh_counted == False:
+                self.num_neurons += len(spiketrains_inh)
+                self.inh_counted  = True
+            
+            ### ALL NEURONS
+            spiketrains = spiketrains_exc + spiketrains_inh
         return spiketrains
 
     
@@ -285,7 +351,6 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         gsyn             = self.get_conductance(trial=trial)
         neuron_positions = self.get_positions()
 
-        self.num_neurons = vm.shape[1] #equals to gsyn.shape[1]
         num_time_points  = vm.shape[0]
         num_electrodes   = self.electrode_positions.shape[0]
         
@@ -310,6 +375,8 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         """
         if self.space_dependency == False:
             positions = self.assign_positions()
+            if self.exc_counted == False and self.inh_counted == False:
+                self.num_neurons = positions.shape[1]
         else:
             raise NotImplementedError("Must implement get_positions.")
         return positions
@@ -342,11 +409,10 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         vm               = self.get_membrane_potential(trial=trial)
         neuron_positions = self.get_positions()
 
-        num_neurons    = vm.shape[1]
-        num_electrodes = self.electrode_positions.shape[0]
-        inv_dist       = nf.electrode_neuron_inv_dist(num_electrodes, self.num_neurons,
-                                                      self.electrode_positions, neuron_positions,
-                                                      self.reach, self.dimensionnality)[0, :]
+        num_electrodes   = self.electrode_positions.shape[0]
+        inv_dist         = nf.electrode_neuron_inv_dist(num_electrodes, self.num_neurons,
+                                                        self.electrode_positions, neuron_positions,
+                                                        self.reach, self.dimensionnality)[0, :]
         closest_neuron = np.argmax(inv_dist)
         selected_vm    = np.reshape(vm[start_index:start_index+duration_index+1, closest_neuron], (duration_index+1,))
         selected_LFP   = np.reshape(self.produce_local_field_potential(trial=trial)[0, start_index:start_index+duration_index+1],
@@ -375,6 +441,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         else:
             trials = trial
         
+        self.get_positions() #just to initiate the value of self.num_neurons
         zerolagcorrelations_array = np.zeros((trials, self.num_neurons))
         for iteration_trial in range(trials):
             vm  = self.get_membrane_potential(trial=iteration_trial)
@@ -402,7 +469,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         return zerolagcorrelations #if withinreach==True, neurons that are out of the reach zone have a null correlation with the LFP
 
 
-    def produce_vm_LFP_meancoherence(self, trial=0, withinreach=True, start=600, duration=1000, dt=0.1):
+    def produce_vm_LFP_meancoherence(self, trial=0, withinreach=True, start=29, duration=1000, dt=0.1):
         """
         Calculates the mean coherence between the neurons' membrane potentials and the LFP.
         returns the mean coherence, the corresponding frequencies (in Hz) and the standard deviation error for each
@@ -433,11 +500,12 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         return meancoherence_array, f, coherencestd_array
     
 
-    def produce_phase_lock_value(self, start=525, offset=250, duration=1000, dt=0.1, 
+    def produce_phase_lock_value(self, start=0, offset=250, duration=950, dt=0.1, 
                                  trial_average=True, trial=0, withinreach=True):
         """
-        Calculates the Phase-Lock value for the spikes occuring in a 750ms period of time.
-        The neurons are supposed to be excitated by a sinusoidal input of 1s, starting 250ms before the selected epoch.
+        Calculates the Phase-Lock value for the spikes occuring in a (duration-offset) ms period of time.
+        The neurons are supposed to be excitated by a sinusoidal input of 1s, starting offset ms before the
+        selected epoch.
         Returns the Phase-Lock value and the corresponding frequencies.
         The trial_average boolean tells if the Phase-Lock value has to be averaged over the trials.
         If not, the chosen trial is trial.

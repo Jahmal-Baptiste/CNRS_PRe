@@ -12,7 +12,7 @@ import neo
 import pickle
 
 
-with open("../T2/ThalamoCorticalModel_data_size_____/Segment57.pickle", "rb") as PyNN_file:
+with open("../T2/ThalamoCorticalModel_data_size_____/Segment71.pickle", "rb") as PyNN_file:
     while True:
         try:
             seg = pickle.load(PyNN_file)
@@ -30,6 +30,15 @@ with open("../T2/ThalamoCorticalModel_data_size_____/Segment57.pickle", "rb") as
             print("    Number of analogsignals: " + str(num_analogsignals))
             for k in range(num_analogsignals):
                 print("        " + str(seg.analogsignals[k].name) + " in " + str(seg.analogsignals[k].units))
+                print("        Shape: " + str(seg.analogsignals[k].shape))
+                plt.figure()
+                plt.title(str(seg.analogsignals[k].name))
+                time_points = seg.analogsignals[k].times
+                for i in range(3):
+                    plt.plot(time_points, seg.analogsignals[k][:, i])
+            plt.show()
+
+
             print("")
             print("    Number of irregularlysampledsignals: " + str(len(seg.irregularlysampledsignals)) + "\n")
             print("    Number of spiketrains: " + str(len(seg.spiketrains)) + "\n")
