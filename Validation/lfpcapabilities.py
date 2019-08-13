@@ -36,7 +36,7 @@ class ProducesPositions(sciunit.Capability):
         """
         return NotImplementedError("Must implement get_positions.")
     
-    def assign_position():
+    def assign_positions():
         """
         The implementation of this method should return the positions of the neurons in shape of a 2-D array,
         just like the get_positions method, exept that it computes the positions itself

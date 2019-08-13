@@ -11,7 +11,7 @@ from scipy.stats import skew
 
 import sys
 sys.path.append("..") #not the best way to modify sys.path...
-from Validation.capabilities import ProducesLocalFieldPotential
+from Validation.lfpcapabilities import ProducesLocalFieldPotential
 import Fonctions.math_functions as mf
 
 

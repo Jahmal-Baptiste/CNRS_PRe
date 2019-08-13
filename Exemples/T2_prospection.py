@@ -12,7 +12,7 @@ import neo
 import pickle
 
 
-with open("../T2/ThalamoCorticalModel_data_size_____/Segment71.pickle", "rb") as PyNN_file:
+with open("../T2/ThalamoCorticalModel_data_size_____/Segment72.pickle", "rb") as PyNN_file:
     while True:
         try:
             seg = pickle.load(PyNN_file)

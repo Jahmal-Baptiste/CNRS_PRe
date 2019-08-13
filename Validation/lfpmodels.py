@@ -13,7 +13,7 @@ from pathlib import Path, PurePath
 
 import sys
 sys.path.append("..") #not the best way to modify sys.path but anyway...
-from Validation.capabilities import ProducesLocalFieldPotential, ProducesConductance
+from Validation.lfpcapabilities import ProducesLocalFieldPotential, ProducesConductance
 import Fonctions.math_functions as mf
 import Fonctions.neuron_functions as nf
 import Fonctions.crosscorrelation as crsscorr
@@ -56,11 +56,10 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         
         ### VERIFICATION IF THE ELECTRODE(S) ARE "INSIDE" THE NETWORK
         for e_pos in electrode_positions:
-            if max(abs(e_pos))+self.reach <= self.dimensions[0]/2.:
+            if max(abs(e_pos))+self.reach > self.dimensions[0]/2.:
                 raise ValueError("Wrong electrode position! Must have its reach zone in the network.")
         
-        return super(CoulombModel, self).__init__(name, network_model, space_dependency, dimensionnality,
-                                                  dimensions, reach, electrode_positions, sigma) #MUST FINISH THIS LINE (name=name, etc.)
+        return super(CoulombModel, self).__init__(name) #MUST FINISH THIS LINE (name=name, etc.)
     
     #================================================================================================================
     #== methods related to raw available data =======================================================================
@@ -68,7 +67,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
 
     def set_directory_path(self, date="20190718"):
         if self.network_model == "VA":
-            parent_directory="../Exemples/Results/"
+            parent_directory="./Exemples/Results/"
             
             directory_path = parent_directory + date
             directory_PATH = Path(directory_path)
@@ -78,7 +77,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             self.directory_PUREPATH = PurePath(directory_path)
 
         elif self.network_model == "T2":
-            directory_path = "../T2/ThalamoCorticalModel_data_size_____/"
+            directory_path = "./T2/ThalamoCorticalModel_data_size_____/"
 
             self.directory_PUREPATH = PurePath(directory_path)
         else:
@@ -90,14 +89,15 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             if neuron_type == "":
                 raise ValueError("Must specify a neuron type.")
             date      = self.directory_PUREPATH.parts[-1]
-            file_path = str(self.directory_PUREPATH) + "VAbenchmarks_COBA_{0}_neuron_np1_{1}-{2}.pkl".format(neuron_type,
+            file_path = "./" + str(self.directory_PUREPATH) + "/VAbenchmarks_COBA_{0}_neuron_np1_{1}-{2}.pkl".format(neuron_type,
                                                                                                              date, time)
             file_PATH = Path(file_path)
+            print(file_path + "\n\n")
             if not file_PATH.exists():
                 sys.exit("File name does not exist! (Try checking the time argument.)")
         
         elif self.network_model == "T2":
-            file_path = str(self.directory_PUREPATH) + "Segment{0}.pickle".format(segment_number)
+            file_path = "./" + str(self.directory_PUREPATH) + "/Segment{0}.pickle".format(segment_number)
 
             file_PATH = Path(file_path)
             if not file_PATH.exists():
@@ -148,13 +148,6 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             vm       = neo.core.AnalogSignal(vm_array, units=vm_exc.units, t_start=vm_exc.t_start,
                                              sampling_rate=vm_exc.sampling_rate)
         else:
-            ### TO CHANGE ###
-            '''
-            All this has to be changed...
-            The pickle files are not organised in blocks but in segments, and these segments correspond to a certain
-            type of neuron in a given layer... I must hence find out which segments correspond to the same experiment
-            and join them together here. Not forgetting to mention the multiple trials for the same experiment.
-            '''
             if experiment == "sin_stim":
                 data_int = 0
             elif experiment == "blank_stim":
@@ -293,13 +286,6 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             ### ALL NEURONS
             spiketrains = spiketrains_exc + spiketrains_inh
         else:
-            ### TO CHANGE ###
-            '''
-            All this has to be changed...
-            The pickle files are not organised in blocks but in segments, and these segments correspond to a certain
-            type of neuron in a given layer... I must hence find out which segments correspond to the same experiment
-            and join them together here. Not forgetting to mention the multiple trials for the same experiment.
-            '''
             if experiment == "sin_stim":
                 data_int = 0
             elif experiment == "blank_stim":
@@ -557,7 +543,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         return PLv, fPLv
 
 
-    def produce_spike_triggered_LFP(self, start=600, duration=1000, dt=0.1, window=200,
+    def produce_spike_triggered_LFP(self, start=500, duration=1000, dt=0.1, window_width=200,
                                     trial_average=True, trial=0):
         """
         Calculates the spike-triggered average of the LFP (stLFP) and arranges the results relative to the distance
@@ -592,7 +578,8 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         else:
             trials = trial
         
-        window_index = int(window/dt)
+        window_index = int(window_width/dt)
+        window       = np.arange(-window_width/2, window_width/2+dt, dt)
         stLFP_array  = np.zeros((trials, num_dist_intervals, window_index+1))
 
         for iteration_trial in range(trials):
@@ -615,4 +602,4 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
                 stLFP_array[iteration_trial, interval_index, :] /= average_counter
         
         stLFP = np.average(stLFP_array, axis=0) #trial-average computation
-        return stLFP
+        return stLFP, window
