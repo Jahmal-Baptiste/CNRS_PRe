@@ -12,7 +12,7 @@ from itertools import chain
 from pathlib import Path, PurePath
 
 import sys
-sys.path.append("..") #not the best way to modify sys.path but anyway...
+#sys.path.append("..") #not the best way to modify sys.path but anyway...
 from Validation.lfpcapabilities import ProducesLocalFieldPotential, ProducesConductance
 import Fonctions.math_functions as mf
 import Fonctions.neuron_functions as nf
@@ -36,8 +36,8 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         self.dimensionnality     = dimensionnality     #dimensionnality of the network - either 2 or 3 D
         self.dimensions          = dimensions          #3D-array: leght, width and height of the network (in m)
         self.reach               = reach               #reach of the LFP (in m)
-        np.transpose(electrode_positions)              #to have the the coordinates along the 0 axis, as opposed to the input state
-        self.electrode_positions = electrode_positions #positions of the electrodes (in m)
+        elec_pos = np.transpose(electrode_positions)   #to have the the coordinates along the 0 axis, as opposed to the input state
+        self.electrode_positions = elec_pos            #positions of the electrodes (in m)
         self.sigma               = sigma               #parameter in the Coulomb law's formula (in S/m)
         self.directory_PUREPATH  = PurePath()
         
@@ -92,7 +92,6 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             file_path = "./" + str(self.directory_PUREPATH) + "/VAbenchmarks_COBA_{0}_neuron_np1_{1}-{2}.pkl".format(neuron_type,
                                                                                                              date, time)
             file_PATH = Path(file_path)
-            print(file_path + "\n\n")
             if not file_PATH.exists():
                 sys.exit("File name does not exist! (Try checking the time argument.)")
         
@@ -144,7 +143,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
                 self.inh_counted  = True
 
             ### ALL NEURONS
-            vm_array = np.concatenate(vm_exc, vm_inh, axis=1)
+            vm_array = np.concatenate((np.array(vm_exc), np.array(vm_inh)), axis=1)
             vm       = neo.core.AnalogSignal(vm_array, units=vm_exc.units, t_start=vm_exc.t_start,
                                              sampling_rate=vm_exc.sampling_rate)
         else:
@@ -180,7 +179,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
                 self.inh_counted  = True
             
             ### ALL NEURONS
-            vm_array = np.concatenate(vm_exc, vm_inh, axis=1)
+            vm_array = np.concatenate((np.array(vm_exc), np.array(vm_inh)), axis=1)
             vm       = neo.core.AnalogSignal(vm_array, units=vm_exc.units, t_start=vm_exc.t_start,
                                              sampling_rate=vm_exc.sampling_rate)
         return vm
@@ -223,7 +222,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
                 self.inh_counted  = True
 
             ### ALL NEURONS
-            gsyn_array = np.concatenate(gsyn_exc, gsyn_inh, axis=1)
+            gsyn_array = np.concatenate((np.array(gsyn_exc), np.array(gsyn_inh)), axis=1)
             gsyn       = neo.core.AnalogSignal(gsyn_array, units=gsyn_exc.units, t_start=gsyn_exc.t_start,
                                                sampling_rate=gsyn_exc.sampling_rate)
         else:
@@ -337,22 +336,29 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         gsyn             = self.get_conductance(trial=trial)
         neuron_positions = self.get_positions()
 
+        time_points      = vm.times
         num_time_points  = vm.shape[0]
         num_electrodes   = self.electrode_positions.shape[0]
         
-        ones_array    = np.ones((num_electrodes, num_time_points, num_neurons))
+        #ones_array    = np.ones((num_electrodes, num_time_points, self.num_neurons))
 
         current_array = np.multiply(vm, gsyn)
-        inv_dist      = nf.electrode_neuron_inv_dist(num_electrodes, num_neurons,
+        big_current_array = np.resize(current_array, (num_time_points, self.num_neurons, num_electrodes))
+        big_current_array = np.transpose(big_current_array, (2, 0, 1))
+
+        inv_dist      = nf.electrode_neuron_inv_dist(num_electrodes, self.num_neurons,
                                                      self.electrode_positions, neuron_positions,
                                                      self.reach, self.dimensionnality)
+        big_inv_dist  = np.resize(inv_dist, (num_electrodes, self.num_neurons, num_time_points))
+        big_inv_dist  = np.transpose(big_inv_dist, (0, 2, 1))
 
-        big_current_array  = np.multiply(ones_array, current_array)
-        big_inv_dist_array = np.multiply(ones_array, inv_dist)
+        #big_current_array  = np.multiply(ones_array, current_array)
+        #big_inv_dist_array = np.multiply(ones_array, inv_dist)
 
-        LFP = np.sum(big_current_array, big_inv_dist_array, axis=2)/(4*np.pi*self.sigma)
+        indiv_LFP = np.multiply(big_current_array, big_inv_dist)
+        LFP       = np.sum(indiv_LFP, axis=2)/(4*np.pi*self.sigma)
 
-        return LFP    
+        return LFP, time_points
 
 
     def get_positions(self):
@@ -401,7 +407,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
                                                         self.reach, self.dimensionnality)[0, :]
         closest_neuron = np.argmax(inv_dist)
         selected_vm    = np.reshape(vm[start_index:start_index+duration_index+1, closest_neuron], (duration_index+1,))
-        selected_LFP   = np.reshape(self.produce_local_field_potential(trial=trial)[0, start_index:start_index+duration_index+1],
+        selected_LFP   = np.reshape(self.produce_local_field_potential(trial=trial)[0][0, start_index:start_index+duration_index+1],
                                     (duration_index+1,))
         
         corr             = crsscorr.constwindowcorrelation(selected_vm, selected_LFP)
@@ -432,7 +438,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         for iteration_trial in range(trials):
             vm  = self.get_membrane_potential(trial=iteration_trial)
             vm  = vm[start_index:start_index+duration_index, :]
-            LFP = np.reshape(self.produce_local_field_potential(trial=iteration_trial)[0, start_index:start_index+duration_index],
+            LFP = np.reshape(self.produce_local_field_potential(trial=iteration_trial)[0][0, start_index:start_index+duration_index],
                              (duration_index+1,))
 
             def zerolagtcorrelationtoLFP(v):
@@ -467,7 +473,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
 
         vm  = self.get_membrane_potential(trial=trial)
         vm  = vm[start_index:start_index+duration_index, :]
-        LFP = np.reshape(self.produce_local_field_potential(trial=trial)[0, start_index:start_index+duration_index],
+        LFP = np.reshape(self.produce_local_field_potential(trial=trial)[0][0, start_index:start_index+duration_index],
                          (duration_index+1,))
         
         ### ELIMINATION OF THE CONTRIBUTION OF NEURONS THAT ARE OUT OF THE REACH ZONE
@@ -520,7 +526,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             selected_spikes = np.multiply(spiketrain, valid_times)
             selected_spikes = selected_spikes[selected_spikes>0]
 
-            LFP      = self.produce_local_field_potential(trial=iteration_trial)[0, :]
+            LFP      = self.produce_local_field_potential(trial=iteration_trial)[0][0, :]
             #LFP_filt = butter_lowpass_filter(LFP, 170., fs)
 
             N_s = min(selected_spikes.shape[0], N_max)  #security measure
@@ -585,7 +591,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         for iteration_trial in range(trials):
             ### LOOP ON THE TRIALS
             spiketrains = self.get_spike_trains(trial=iteration_trial)
-            LFP         = self.produce_local_field_potential(trial=iteration_trial)[0, :]
+            LFP         = self.produce_local_field_potential(trial=iteration_trial)[0][0, :]
 
             for interval_index in range(num_dist_intervals):
                 ### LOOP ON THE DISTANCE INTERVALS
