@@ -1,3 +1,10 @@
+#from __future__ import absolute_import
+#from Validation import module_locator
+#this_file_path = module_locator.module_path()
+import sys, os
+##sys.path.append("..") #not the best way to modify sys.path but anyway...
+#sys.path.append(os.path.dirname(this_file_path))
+
 import sciunit
 import neuronunit
 from neuronunit.capabilities import ProducesMembranePotential, ProducesSpikes
@@ -11,13 +18,12 @@ from scipy.fftpack import fft
 from itertools import chain
 from pathlib import Path, PurePath
 
-import sys
-#sys.path.append("..") #not the best way to modify sys.path but anyway...
+
 from Validation.lfpcapabilities import ProducesLocalFieldPotential, ProducesConductance
-import Fonctions.math_functions as mf
-import Fonctions.neuron_functions as nf
-import Fonctions.crosscorrelation as crsscorr
-import Fonctions.filters as filt
+from Fonctions import math_functions as mf
+from Fonctions import neuron_functions as nf
+from Fonctions import crosscorrelation as crsscorr
+from Fonctions import filters as filt
 
 
 class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembranePotential,
@@ -38,7 +44,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         self.reach               = reach               #reach of the LFP (in m)
         elec_pos = np.transpose(electrode_positions)   #to have the the coordinates along the 0 axis, as opposed to the input state
         self.electrode_positions = elec_pos            #positions of the electrodes (in m)
-        self.sigma               = sigma               #parameter in the Coulomb law's formula (in S/m)
+        self.sigma               = sigma*1e6           #parameter in the Coulomb law's formula (in uS/m)
         self.directory_PUREPATH  = PurePath()
         
         ### COMPUTATION OF THE NUMBER OF SEGMENTS
@@ -437,8 +443,8 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         zerolagcorrelations_array = np.zeros((trials, self.num_neurons))
         for iteration_trial in range(trials):
             vm  = self.get_membrane_potential(trial=iteration_trial)
-            vm  = vm[start_index:start_index+duration_index, :]
-            LFP = np.reshape(self.produce_local_field_potential(trial=iteration_trial)[0][0, start_index:start_index+duration_index],
+            vm  = vm[start_index:start_index+duration_index+1, :]
+            LFP = np.reshape(self.produce_local_field_potential(trial=iteration_trial)[0][0, start_index:start_index+duration_index+1],
                              (duration_index+1,))
 
             def zerolagtcorrelationtoLFP(v):
@@ -472,9 +478,9 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         duration_index = int(duration/dt)
 
         vm  = self.get_membrane_potential(trial=trial)
-        vm  = vm[start_index:start_index+duration_index, :]
-        LFP = np.reshape(self.produce_local_field_potential(trial=trial)[0][0, start_index:start_index+duration_index],
-                         (duration_index+1,))
+        vm  = vm[start_index:start_index+duration_index+1, :]
+        LFP = np.reshape(self.produce_local_field_potential(trial=trial)[0][0, start_index:start_index+duration_index+1],
+                         (duration_index+1, 1))
         
         ### ELIMINATION OF THE CONTRIBUTION OF NEURONS THAT ARE OUT OF THE REACH ZONE
         if withinreach:
@@ -486,10 +492,14 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             valid_dist_neurons = np.heaviside(inv_dist-1./self.reach, 1) #array of neurons that are within the reach
             vm                 = np.multiply(vm, valid_dist_neurons)     #vms of neurons that are out of the reach are null
 
-        f, coherence_array  = coherence(LFP, vm, axis=0, nperseg=int(2**12), fs=1000./dt)
-        meancoherence_array = np.average(coherence_array, axis=1)
-        coherencestd_array  = np.std(coherence_array, axis=1)
-        return meancoherence_array, f, coherencestd_array
+        vm = np.transpose(vm)
+        #vm = np.resize(vm, (vm.shape[0], vm.shape[1], ))
+        #print(vm.shape)
+        #print(LFP.shape)
+        f, coherence_array = coherence(LFP, vm, axis=0, nperseg=int(2**11), fs=1000./dt)
+        meancoherence      = np.average(coherence_array, axis=1)
+        coherencestd       = np.std(coherence_array, axis=1)
+        return meancoherence, f, coherencestd
     
 
     def produce_phase_lock_value(self, start=0, offset=250, duration=950, dt=0.1, 

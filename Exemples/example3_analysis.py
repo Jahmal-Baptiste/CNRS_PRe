@@ -17,8 +17,15 @@ from scipy.signal import hanning, coherence
 from scipy.fftpack import fft
 import matplotlib.pyplot as plt
 from itertools import chain
-import sys
-sys.path.append("..")
+import sys#, os, os.path as path
+sys.path.append("..") #not good solution 1
+#sys.path.append(path.dirname(path.dirname(path.abspath(__file__)))) # 2
+#dossier = os.path.dirname(os.path.abspath(__file__))
+#while not dossier.endswith('Fonctions'):
+#    dossier = os.path.dirname(dossier)
+#dossier = os.path.dirname(dossier)
+#if dossier not in sys.path:
+#    sys.path.append(dossier)
 from Fonctions.filters import butter_lowpass_filter, butter_bandpass_filter
 from Fonctions.crosscorrelation import constwindowcorrelation
 from Fonctions.math_functions import random_list
@@ -48,7 +55,6 @@ print("\nEXCITATORY NEURONS\n")
     
 PyNN_file = open("./Results/20190718/VAbenchmarks_COBA_exc_neuron_np1_20190718-201157.pkl", "rb")
 loaded    = pickle.load(PyNN_file)
-print(len(loaded))
 seg       = loaded.segments[0] #there is only one segment
 
 #####################
