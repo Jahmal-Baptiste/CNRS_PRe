@@ -18,7 +18,7 @@ from scipy.fftpack import fft
 import matplotlib.pyplot as plt
 from itertools import chain
 import sys#, os, os.path as path
-sys.path.append("..") #not good solution 1
+sys.path.append("..") #not the best way to modify sys.path
 #sys.path.append(path.dirname(path.dirname(path.abspath(__file__)))) # 2
 #dossier = os.path.dirname(os.path.abspath(__file__))
 #while not dossier.endswith('Fonctions'):
@@ -26,10 +26,10 @@ sys.path.append("..") #not good solution 1
 #dossier = os.path.dirname(dossier)
 #if dossier not in sys.path:
 #    sys.path.append(dossier)
-from Fonctions.filters import butter_lowpass_filter, butter_bandpass_filter
-from Fonctions.crosscorrelation import constwindowcorrelation
-from Fonctions.math_functions import random_list
-from Fonctions.neuron_functions import electrode_neuron_inv_dist, spike_rate
+from Functions.filters import butter_lowpass_filter, butter_bandpass_filter
+from Functions.crosscorrelation import constwindowcorrelation
+from Functions.math_functions import random_list
+from Functions.neuron_functions import electrode_neuron_inv_dist, spike_rate
 
 
 #=================================================================================================================

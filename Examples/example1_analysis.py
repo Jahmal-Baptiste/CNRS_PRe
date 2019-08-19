@@ -2,19 +2,7 @@ import numpy as np
 import quantities as quant
 import matplotlib.pyplot as plt
 import neo
-import pickle
-
-
-#def random_list(n, a):
-#    rnd_list = []
-#    k = 0
-#    while k<n:
-#        rnd_num = np.random.random_integers(0, a)
-#        if rnd_num not in rnd_list:
-#            k+=1
-#            rnd_list.append(rnd_num)
-#    return rnd_list
-        
+import pickle        
 
 
 with open("./Results/20190705/current_injection_neuron_20190705-131959.pkl", "rb") as PyNN_file:

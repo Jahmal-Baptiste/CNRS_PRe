@@ -12,7 +12,7 @@ from scipy.stats import skew
 import sys
 sys.path.append("..") #not the best way to modify sys.path...
 from Validation.lfpcapabilities import ProducesLocalFieldPotential
-import Fonctions.math_functions as mf
+import Functions.math_functions as mf
 
 
 class Vm_LFP_CorrelationTest(sciunit.Test):

@@ -20,10 +20,10 @@ import os.path
 
 
 from Validation.lfpcapabilities import ProducesLocalFieldPotential, ProducesConductance
-from Fonctions import math_functions as mf
-from Fonctions import neuron_functions as nf
-from Fonctions import crosscorrelation as crsscorr
-from Fonctions import filters as filt
+from Functions import math_functions as mf
+from Functions import neuron_functions as nf
+from Functions import crosscorrelation as crsscorr
+from Functions import filters as filt
 
 
 class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembranePotential,

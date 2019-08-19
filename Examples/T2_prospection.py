@@ -13,7 +13,7 @@ import pickle
 
 import sys
 sys.path.append("..")
-from Fonctions import math_functions as mf
+from Functions import math_functions as mf
 
 
 with open("../T2/ThalamoCorticalModel_data_size_____/Segment1.pickle", "rb") as PyNN_file:

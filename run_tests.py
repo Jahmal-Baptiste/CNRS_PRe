@@ -15,7 +15,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from .Validation.lfpmodels import CoulombModel
-from  .Fonctions import math_functions as mf
+from  .Functions import math_functions as mf
 
 
 first_model = CoulombModel("First", network_model="T2")
