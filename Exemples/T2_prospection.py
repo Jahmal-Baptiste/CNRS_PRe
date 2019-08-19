@@ -16,11 +16,11 @@ sys.path.append("..")
 from Fonctions import math_functions as mf
 
 
-with open("../T2/ThalamoCorticalModel_data_size_____/Segment71.pickle", "rb") as PyNN_file:
+with open("../T2/ThalamoCorticalModel_data_size_____/Segment1.pickle", "rb") as PyNN_file:
     while True:
         try:
             plot = True
-            seg = pickle.load(PyNN_file)
+            seg = pickle.load(PyNN_file, encoding="latin1")
             print("EXCITATORY NEURONS\n")
             #print("Type of the seg file: " + str(type(seg)) + "\n") #this is a Segment...
             print("Segment description:\n\n" + seg.description)

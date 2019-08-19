@@ -9,13 +9,13 @@ if __name__ == "__main__" and __package__ is None:
 import sys, os
 os.chdir("/media/Data/Scolarite/ENSTA/Stages/PRe_Windows/Environnement_de_travail")
 sys.path.append("/home/jahmal/.local/bin")
-#for p in sys.path:
-#    print(p)
+
 
 import numpy as np
 import matplotlib.pyplot as plt
 
-from Validation.lfpmodels import CoulombModel
+from .Validation.lfpmodels import CoulombModel
+from  .Fonctions import math_functions as mf
 
 
 first_model = CoulombModel("First", network_model="T2")
@@ -42,14 +42,21 @@ if vm_bool:
 
     plt.figure()
     plt.title("First Vm")
-    plt.plot(time_points, vm[:, 0])
+    rnd_list = mf.random_list(5, vm.shape[1], minimum=0)
+    for k in range(5):
+        print(vm[-10:, rnd_list[k]])
+        plt.plot(time_points, vm[:, rnd_list[k]])
 
 if gsyn_bool:
     gsyn = first_model.get_conductance()
+    time_points = gsyn.times
 
     plt.figure()
     plt.title("First Gsyn")
-    plt.plot(time_points, gsyn[:, 0])
+    rnd_list = mf.random_list(5, vm.shape[1], minimum=0)
+    for k in range(5):
+        #print(gsyn[:, rnd_list[k]].shape)
+        plt.plot(time_points, gsyn[:, rnd_list[k]])
 
 
 if corr_bool:

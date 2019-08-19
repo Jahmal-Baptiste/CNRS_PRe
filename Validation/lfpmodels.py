@@ -126,7 +126,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
                     sys.exit("File name does not exist! (Try checking the time argument.)")
         
         elif self.network_model == "T2":
-            file_path = str(self.directory_PUREPATH) + "/Segment{0}.pickle".format(segment_number)
+            file_path = str(self.directory_PUREPATH) + "/Segment{}.pickle".format(segment_number)
 
             if sys.version_info[0] == 2:
                 if not os.path.exists(file_path):
@@ -192,7 +192,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             seg_num     = str(10*trial+data_int+2)
             file_path   = self.get_file_path(segment_number=seg_num)
             PyNN_file   = open(file_path, "rb")
-            seg         = pickle.load(PyNN_file)
+            seg         = pickle.load(PyNN_file, encoding="latin1")
             for analogsignal in seg.analogsignals:
                 if analogsignal.name == 'v':
                     vm_exc = analogsignal
@@ -204,7 +204,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             seg_num     = str(10*trial+data_int+1)
             file_path   = self.get_file_path(segment_number=seg_num)
             PyNN_file   = open(file_path, "rb")
-            seg         = pickle.load(PyNN_file)
+            seg         = pickle.load(PyNN_file, encoding="latin1")
             for analogsignal in seg.analogsignals:
                 if analogsignal.name == 'v':
                     vm_inh = analogsignal
@@ -260,13 +260,6 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             gsyn       = neo.core.AnalogSignal(gsyn_array, units=gsyn_exc.units, t_start=gsyn_exc.t_start,
                                                sampling_rate=gsyn_exc.sampling_rate)
         else:
-            ### TO CHANGE ###
-            '''
-            All this has to be changed...
-            The pickle files are not organised in blocks but in segments, and these segments correspond to a certain
-            type of neuron in a given layer... I must hence find out which segments correspond to the same experiment
-            and join them together here. Not forgetting to mention the multiple trials for the same experiment.
-            '''
             if experiment == "sin_stim":
                 data_int = 0
             elif experiment == "blank_stim":
@@ -278,7 +271,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             seg_num     = str(10*trial+data_int+2)
             file_path   = self.get_file_path(segment_number=seg_num)
             PyNN_file   = open(file_path, "rb")
-            seg         = pickle.load(PyNN_file)
+            seg         = pickle.load(PyNN_file, encoding="latin1")
             for analogsignal in seg.analogsignals:
                 if analogsignal.name == 'gsyn_exc':
                     gsyn_exc_exc = analogsignal
@@ -286,8 +279,9 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
                 if analogsignal.name == 'gsyn_inh':
                     gsyn_exc_inh = analogsignal
             
-            gsyn_exc            = np.resize(gsyn_exc_exc, (gsyn_exc_exc.shape[0], gsyn_exc_exc.shape[1], 2))
-            gsyn_exc[:, :, 2]   = gsyn_exc_inh
+            gsyn_exc            = np.array(np.resize(gsyn_exc_exc, (gsyn_exc_exc.shape[0], gsyn_exc_exc.shape[1], 2)))
+            gsyn_exc_inh_array  = np.array(gsyn_exc_inh)
+            gsyn_exc[:, :, 1]   = gsyn_exc_inh_array
             conductance_weights = np.array([4., 1.])
             gsyn_exc            = np.average(gsyn_exc, axis=2, weights=conductance_weights)
 
@@ -299,7 +293,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             seg_num     = str(10*trial+data_int+1)
             file_path   = self.get_file_path(segment_number=seg_num)
             PyNN_file   = open(file_path, "rb")
-            seg         = pickle.load(PyNN_file)
+            seg         = pickle.load(PyNN_file, encoding="latin1")
             for analogsignal in seg.analogsignals:
                 if analogsignal.name == 'gsyn_exc':
                     gsyn_inh_exc = analogsignal
@@ -307,8 +301,9 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
                 if analogsignal.name == 'gsyn_inh':
                     gsyn_inh_inh = analogsignal
             
-            gsyn_inh            = np.resize(gsyn_inh_exc, (gsyn_inh_exc.shape[0], gsyn_inh_exc.shape[1], 2))
-            gsyn_inh[:, :, 2]   = gsyn_inh_inh
+            gsyn_inh            = np.array(np.resize(gsyn_inh_exc, (gsyn_inh_exc.shape[0], gsyn_inh_exc.shape[1], 2)))
+            gsyn_inh_inh_array  = np.array(gsyn_inh_inh)
+            gsyn_inh[:, :, 1]   = gsyn_inh_inh_array
             conductance_weights = np.array([4., 1.])
             gsyn_inh            = np.average(gsyn_inh, axis=2, weights=conductance_weights)
 
@@ -369,7 +364,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             seg_num     = str(10*trial+data_int+2)
             file_path   = self.get_file_path(segment_number=seg_num)
             PyNN_file   = open(file_path, "rb")
-            seg         = pickle.load(PyNN_file)
+            seg         = pickle.load(PyNN_file, encoding="latin1")
             spiketrains_exc = seg.spiketrains
             if self.exc_counted == False:
                 self.num_neurons += len(spiketrains_exc)
@@ -379,7 +374,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             seg_num     = str(10*trial+data_int+1)
             file_path   = self.get_file_path(segment_number=seg_num)
             PyNN_file   = open(file_path, "rb")
-            seg         = pickle.load(PyNN_file)
+            seg         = pickle.load(PyNN_file, encoding="latin1")
             spiketrains_inh = seg.spiketrains
             if self.inh_counted == False:
                 self.num_neurons += len(spiketrains_inh)
