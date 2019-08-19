@@ -50,7 +50,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         ### COMPUTATION OF THE NUMBER OF SEGMENTS
         self.set_directory_path()
         if self.network_model == "T2":
-            self.num_trials = 11                       #number of trials for a same experiment
+            self.num_trials = 1                       #number of trials for a same experiment
         elif self.network_model == "VA":
             self.num_trials = 1
         else:
@@ -60,7 +60,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         self.exc_counted = False
         self.inh_counted = False
         
-        ### VERIFICATION IF THE ELECTRODE(S) ARE "INSIDE" THE NETWORK
+        ### VERIFICATION IF THE ELECTRODE(S) IS/ARE "INSIDE" THE NETWORK
         for e_pos in electrode_positions:
             if max(abs(e_pos))+self.reach > self.dimensions[0]/2.:
                 raise ValueError("Wrong electrode position! Must have its reach zone in the network.")
@@ -73,7 +73,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
 
     def set_directory_path(self, date="20190718"):
         if self.network_model == "VA":
-            parent_directory="./Exemples/Results/"
+            parent_directory="./Examples/Results/"
             
             directory_path = parent_directory + date
             
@@ -96,7 +96,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             if neuron_type == "":
                 raise ValueError("Must specify a neuron type.")
             
-            date      = self.directory_ABSPATH.parts[-1]
+            date      = os.path.basename(self.directory_ABSPATH)
             file_path = str(self.directory_ABSPATH) + "/VAbenchmarks_COBA_{0}_neuron_np1_{1}-{2}.pkl".format(neuron_type,
                                                                                                              date, time)
             if not os.path.exists(file_path):
@@ -376,6 +376,14 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         gsyn             = self.get_conductance(trial=trial)
         neuron_positions = self.get_positions()
 
+        ### SELECTION OF THE NEURONS WHERE THE COMPUTATION IS VALID (NON-NAN VALUES)
+        vm_nan             = np.isnan(vm[-1, :])
+        vm_nan_indexes     = np.argwhere(vm_nan == True)
+        vm[:, vm_nan_indexes] = 0*vm.units
+        gsyn_nan           = np.isnan(gsyn[-1, :])
+        gsyn_nan_indexes   = np.argwhere(gsyn_nan == True)
+        gsyn[:, gsyn_nan_indexes] = 0*gsyn.units
+
         time_points      = vm.times
         num_time_points  = vm.shape[0]
         num_electrodes   = self.electrode_positions.shape[0]
@@ -436,6 +444,10 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         vm               = self.get_membrane_potential(trial=trial)
         neuron_positions = self.get_positions()
 
+        vm_nan             = np.isnan(vm[-1, :])
+        vm_nan_indexes     = np.argwhere(vm_nan == True)
+        vm[:, vm_nan_indexes] = 0*vm.units
+
         num_electrodes   = self.electrode_positions.shape[0]
         inv_dist         = nf.electrode_neuron_inv_dist(num_electrodes, self.num_neurons,
                                                         self.electrode_positions, neuron_positions,
@@ -472,6 +484,11 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         zerolagcorrelations_array = np.zeros((trials, self.num_neurons))
         for iteration_trial in range(trials):
             vm  = self.get_membrane_potential(trial=iteration_trial)
+
+            vm_nan             = np.isnan(vm[-1, :])
+            vm_nan_indexes     = np.argwhere(vm_nan == True)
+            vm[:, vm_nan_indexes] = 0*vm.units
+
             vm  = vm[start_index:start_index+duration_index+1, :]
             LFP = np.reshape(self.produce_local_field_potential(trial=iteration_trial)[0][0, start_index:start_index+duration_index+1],
                              (duration_index+1,))
@@ -507,6 +524,11 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         duration_index = int(duration/dt)
 
         vm  = self.get_membrane_potential(trial=trial)
+
+        vm_nan             = np.isnan(vm[-1, :])
+        vm_nan_indexes     = np.argwhere(vm_nan == True)
+        vm[:, vm_nan_indexes] = 0*vm.units
+
         vm  = vm[start_index:start_index+duration_index+1, :]
         LFP = np.reshape(self.produce_local_field_potential(trial=trial)[0][0, start_index:start_index+duration_index+1],
                          (duration_index+1, 1))

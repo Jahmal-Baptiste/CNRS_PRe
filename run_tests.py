@@ -20,13 +20,15 @@ from  .Functions import math_functions as mf
 
 first_model = CoulombModel("First", network_model="T2")
 
-LFP_bool = False
-vm_bool  = True
-gsyn_bool = False
-corr_bool = False
+LFP_bool   = False
+vm_bool    = False
+gsyn_bool  = False
+corr_bool  = False
 coher_bool = False
-stLFP_bool = False
+stLFP_bool = True
 PLv_bool   = False
+
+trial_average = True
 
 if LFP_bool:
     LFP, time_points = first_model.produce_local_field_potential()
@@ -44,7 +46,7 @@ if vm_bool:
     plt.title("First Vm")
     rnd_list = mf.random_list(5, vm.shape[1], minimum=0)
     for k in range(5):
-        print(vm[-10:, rnd_list[k]])
+        print(vm[-5:, rnd_list[k]])
         plt.plot(time_points, vm[:, rnd_list[k]])
 
 if gsyn_bool:
@@ -60,7 +62,7 @@ if gsyn_bool:
 
 
 if corr_bool:
-    zerolagcorrelations = first_model.produce_vm_LFP_zerolagcorrelations(trial_average=True)
+    zerolagcorrelations = first_model.produce_vm_LFP_zerolagcorrelations(trial_average=trial_average)
     plt.figure()
     plt.hist(zerolagcorrelations)
 
@@ -72,16 +74,18 @@ if coher_bool:
     plt.semilogx(f, meancoherence)
 
 if stLFP_bool:
-    stLFP, window = first_model.produce_spike_triggered_LFP()
+    stLFP, window = first_model.produce_spike_triggered_LFP(trial_average=trial_average)
     plt.figure()
     plt.title("Spike-triggered LFP")
     plt.ylabel("LFP average (mV)")
     plt.xlabel("Lag (ms)")
     for k in range(stLFP.shape[0]):
-        plt.plot(window, stLFP[k])
+        if stLFP[k, :].all() != 0:
+            plt.plot(window, stLFP[k], label=str(k))
+    plt.legend()
 
 if PLv_bool:
-    PLv, fPLv = first_model.produce_phase_lock_value()
+    PLv, fPLv = first_model.produce_phase_lock_value(trial_average=trial_average)
     plt.figure()
     plt.title("Phase-Lock value")
     plt.xlabel("Frequency (Hz)")
