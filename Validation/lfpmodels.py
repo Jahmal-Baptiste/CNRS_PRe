@@ -16,7 +16,10 @@ import numpy as np
 from scipy.signal import coherence, hanning
 from scipy.fftpack import fft
 from itertools import chain
-from pathlib import Path, PurePath
+if sys.version_info[0] == 2:
+    import os.path
+else:
+    from pathlib import Path, PurePath
 
 
 from Validation.lfpcapabilities import ProducesLocalFieldPotential, ProducesConductance
@@ -45,7 +48,10 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         elec_pos = np.transpose(electrode_positions)   #to have the the coordinates along the 0 axis, as opposed to the input state
         self.electrode_positions = elec_pos            #positions of the electrodes (in m)
         self.sigma               = sigma*1e6           #parameter in the Coulomb law's formula (in uS/m)
-        self.directory_PUREPATH  = PurePath()
+        if sys.version_info[0] == 2:
+            self.directory_PUREPATH = os.path.abspath("")
+        else:
+            self.directory_PUREPATH = PurePath()
         
         ### COMPUTATION OF THE NUMBER OF SEGMENTS
         self.set_directory_path()
@@ -76,16 +82,29 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             parent_directory="./Exemples/Results/"
             
             directory_path = parent_directory + date
-            directory_PATH = Path(directory_path)
             
-            if not directory_PATH.exists():
-                sys.exit("Directory does not exist!")
-            self.directory_PUREPATH = PurePath(directory_path)
+            if sys.version_info[0] == 2:
+                if not os.path.exists(directory_path):
+                    sys.exit("Directory does not exist!")
+                self.directory_PUREPATH = os.path.abspath(directory_path)
+            else:
+                directory_PATH = Path(directory_path)
+                if not directory_PATH.exists():
+                    sys.exit("Directory does not exist!")
+                self.directory_PUREPATH = PurePath(directory_path)
 
         elif self.network_model == "T2":
             directory_path = "./T2/ThalamoCorticalModel_data_size_____/"
 
-            self.directory_PUREPATH = PurePath(directory_path)
+            if sys.version_info[0] == 2:
+                if not os.path.exists(directory_path):
+                    sys.exit("Directory does not exist!")
+                self.directory_PUREPATH = os.path.abspath(directory_path)
+            else:
+                directory_PATH = Path(directory_path)
+                if not directory_PATH.exists():
+                    sys.exit("Directory does not exist!")
+                self.directory_PUREPATH = PurePath(directory_path)
         else:
             raise NotImplementedError("Only the T2 and the Voggels-Abott models are supported.")
             
@@ -94,19 +113,28 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         if self.network_model == "VA":
             if neuron_type == "":
                 raise ValueError("Must specify a neuron type.")
+            
             date      = self.directory_PUREPATH.parts[-1]
-            file_path = "./" + str(self.directory_PUREPATH) + "/VAbenchmarks_COBA_{0}_neuron_np1_{1}-{2}.pkl".format(neuron_type,
+            file_path = str(self.directory_PUREPATH) + "/VAbenchmarks_COBA_{0}_neuron_np1_{1}-{2}.pkl".format(neuron_type,
                                                                                                              date, time)
-            file_PATH = Path(file_path)
-            if not file_PATH.exists():
-                sys.exit("File name does not exist! (Try checking the time argument.)")
+            if sys.version_info[0] == 2:
+                if not os.path.exists(file_path):
+                    sys.exit("File name does not exist! (Try checking the time argument.)")
+            else:
+                file_PATH = Path(file_path)
+                if not file_PATH.exists():
+                    sys.exit("File name does not exist! (Try checking the time argument.)")
         
         elif self.network_model == "T2":
-            file_path = "./" + str(self.directory_PUREPATH) + "/Segment{0}.pickle".format(segment_number)
+            file_path = str(self.directory_PUREPATH) + "/Segment{0}.pickle".format(segment_number)
 
-            file_PATH = Path(file_path)
-            if not file_PATH.exists():
-                sys.exit("File name does not exist! (Try checking segment number.)")
+            if sys.version_info[0] == 2:
+                if not os.path.exists(file_path):
+                    sys.exit("File name does not exist!")
+            else:
+                file_PATH = Path(file_path)
+                if not file_PATH.exists():
+                    sys.exit("File name does not exist!")
         else:
             raise NotImplementedError("Only the T2 and the Voggels-Abott models are supported.")
         return file_path
@@ -246,13 +274,52 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             else:
                 raise ValueError("The experiment argument must be either 'sin_stim' or 'blank_stim'.")
             
-            seg_num     = str(trial)
+            ### EXCITATORY NEURONS
+            seg_num     = str(10*trial+data_int+2)
             file_path   = self.get_file_path(segment_number=seg_num)
             PyNN_file   = open(file_path, "rb")
             seg         = pickle.load(PyNN_file)
             for analogsignal in seg.analogsignals:
-                if analogsignal.name == 'gsyn':
-                    gsyn = analogsignal
+                if analogsignal.name == 'gsyn_exc':
+                    gsyn_exc_exc = analogsignal
+            for analogsignal in seg.analogsignals:
+                if analogsignal.name == 'gsyn_inh':
+                    gsyn_exc_inh = analogsignal
+            
+            gsyn_exc            = np.resize(gsyn_exc_exc, (gsyn_exc_exc.shape[0], gsyn_exc_exc.shape[1], 2))
+            gsyn_exc[:, :, 2]   = gsyn_exc_inh
+            conductance_weights = np.array([4., 1.])
+            gsyn_exc            = np.average(gsyn_exc, axis=2, weights=conductance_weights)
+
+            if self.exc_counted == False:
+                self.num_neurons += gsyn_exc.shape[1]
+                self.exc_counted  = True
+            
+            ### INHIBITORY NEURONS
+            seg_num     = str(10*trial+data_int+1)
+            file_path   = self.get_file_path(segment_number=seg_num)
+            PyNN_file   = open(file_path, "rb")
+            seg         = pickle.load(PyNN_file)
+            for analogsignal in seg.analogsignals:
+                if analogsignal.name == 'gsyn_exc':
+                    gsyn_inh_exc = analogsignal
+            for analogsignal in seg.analogsignals:
+                if analogsignal.name == 'gsyn_inh':
+                    gsyn_inh_inh = analogsignal
+            
+            gsyn_inh            = np.resize(gsyn_inh_exc, (gsyn_inh_exc.shape[0], gsyn_inh_exc.shape[1], 2))
+            gsyn_inh[:, :, 2]   = gsyn_inh_inh
+            conductance_weights = np.array([4., 1.])
+            gsyn_inh            = np.average(gsyn_inh, axis=2, weights=conductance_weights)
+
+            if self.inh_counted == False:
+                self.num_neurons += gsyn_inh.shape[1]
+                self.inh_counted  = True
+            
+            ### ALL NEURONS
+            gsyn_array = np.concatenate((gsyn_exc, gsyn_inh), axis=1)
+            gsyn       = neo.core.AnalogSignal(gsyn_array, units=gsyn_exc_exc.units, t_start=gsyn_exc_exc.t_start,
+                                             sampling_rate=gsyn_exc_exc.sampling_rate)
         return gsyn
     
     
@@ -346,8 +413,6 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         num_time_points  = vm.shape[0]
         num_electrodes   = self.electrode_positions.shape[0]
         
-        #ones_array    = np.ones((num_electrodes, num_time_points, self.num_neurons))
-
         current_array = np.multiply(vm, gsyn)
         big_current_array = np.resize(current_array, (num_time_points, self.num_neurons, num_electrodes))
         big_current_array = np.transpose(big_current_array, (2, 0, 1))
@@ -357,9 +422,6 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
                                                      self.reach, self.dimensionnality)
         big_inv_dist  = np.resize(inv_dist, (num_electrodes, self.num_neurons, num_time_points))
         big_inv_dist  = np.transpose(big_inv_dist, (0, 2, 1))
-
-        #big_current_array  = np.multiply(ones_array, current_array)
-        #big_inv_dist_array = np.multiply(ones_array, inv_dist)
 
         indiv_LFP = np.multiply(big_current_array, big_inv_dist)
         LFP       = np.sum(indiv_LFP, axis=2)/(4*np.pi*self.sigma)
@@ -493,9 +555,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             vm                 = np.multiply(vm, valid_dist_neurons)     #vms of neurons that are out of the reach are null
 
         vm = np.transpose(vm)
-        #vm = np.resize(vm, (vm.shape[0], vm.shape[1], ))
-        #print(vm.shape)
-        #print(LFP.shape)
+
         f, coherence_array = coherence(LFP, vm, axis=0, nperseg=int(2**11), fs=1000./dt)
         meancoherence      = np.average(coherence_array, axis=1)
         coherencestd       = np.std(coherence_array, axis=1)
@@ -527,14 +587,9 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
                                 dtype=float)              #multi-trial Phase-Lock value array, empty for the moment
 
         for iteration_trial in range(trials):
-            spiketrain   = self.get_spike_train(trial=iteration_trial)
-            num_spikes   = len(spiketrain)
-            valid_times1 = np.heaviside(spiketrain-(start+offset)*np.ones(num_spikes), 1)   #spikes that occured after a certain time
-            valid_times2 = np.heaviside((start+duration)*np.ones(num_spikes)-spiketrain, 1) #spikes that occured before the maximum admitted time
-            valid_times  = np.multiply(valid_times1, valid_times2)
-
-            selected_spikes = np.multiply(spiketrain, valid_times)
-            selected_spikes = selected_spikes[selected_spikes>0]
+            spiketrain   = np.array(self.get_spike_train(trial=iteration_trial))
+            selected_spikes = np.multiply(spiketrain, mf.door(spiketrain, start+offset, start+duration))
+            selected_spikes = selected_spikes[selected_spikes > 0]
 
             LFP      = self.produce_local_field_potential(trial=iteration_trial)[0][0, :]
             #LFP_filt = butter_lowpass_filter(LFP, 170., fs)
@@ -559,7 +614,8 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         return PLv, fPLv
 
 
-    def produce_spike_triggered_LFP(self, start=500, duration=1000, dt=0.1, window_width=200,
+    def produce_spike_triggered_LFP(self, start=0, duration=1000, dt=0.1, window_width=200,
+                                    discrim_dist_list=[4e-4, 8e-4, 1.2e-3, 1.6e-3],
                                     trial_average=True, trial=0):
         """
         Calculates the spike-triggered average of the LFP (stLFP) and arranges the results relative to the distance
@@ -567,9 +623,9 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         Returns the stLFP for each distance interval and in a time interval around the spikes.
         The stLFP is a 2D-array with the first dimension corresponding to the distance and the second, the time.
         """
-        discrim_dist     = np.array([4e-4, 8e-4, 1.2e-3, 1.6e-3])
+        discrim_dist     = np.array(discrim_dist_list)
         discrim_inv_dist = np.append(np.inf, np.power(discrim_dist, -1))
-        discrim_inv_dist = np.append(discrim_dist, 0.)
+        discrim_inv_dist = np.append(discrim_inv_dist, 0.)
 
         num_electrodes   = self.electrode_positions.shape[0]
         neuron_positions = self.get_positions()
@@ -578,11 +634,11 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
                                                         self.reach, self.dimensionnality)[0, :]
         
         discrim_indexes    = [[], [], [], [], []]
-        num_dist_intervals = 5
+        num_dist_intervals = len(discrim_indexes)
         for i in range(num_dist_intervals):
             i_normalized_inv_dist = mf.door(inv_dist, discrim_inv_dist[i+1], discrim_inv_dist[i])
-            i_indexes  = np.argwhere(i_normalized_inv_dist == 1)
-            discrim_indexes[i].append(i_indexes.flatten().tolist())
+            i_indexes  = np.argwhere(i_normalized_inv_dist > 0)
+            discrim_indexes[i] = i_indexes.flatten().tolist()
         
         '''
         Now I have discriminated the neurons according to their distance from the electrode (information stored in
@@ -594,6 +650,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         else:
             trials = trial
         
+        offset       = window_width/2
         window_index = int(window_width/dt)
         window       = np.arange(-window_width/2, window_width/2+dt, dt)
         stLFP_array  = np.zeros((trials, num_dist_intervals, window_index+1))
@@ -608,14 +665,19 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
                 average_counter = 0
                 for neuron_index in discrim_indexes[interval_index]:
                     ### LOOP ON THE NEURONS WITHIN A DISTANCE INTERVAL
-                    for t_s in spiketrains[neuron_index]: #maybe I can get rid of this loop... I don't like it...
+                    spiketrain   = np.array(spiketrains[neuron_index])
+                    
+                    selected_spikes = np.multiply(spiketrain, mf.door(spiketrain, start+offset, start+duration-offset))
+                    selected_spikes = selected_spikes[selected_spikes > 0]
+                    for t_s in selected_spikes:
                         ### LOOP ON THE SPIKES OF A GIVEN NEURON
                         t_s_index = int(t_s/dt)
-                        average_counte += 1
+                        average_counter += 1
                         stLFP_array[iteration_trial, interval_index, :] = np.add(
-                                                                       stLFP_array[iteration_trial, interval_index, :],
-                                                                       LFP[t_s-window_index//2:t_s_index+window_index//2+1])
-                stLFP_array[iteration_trial, interval_index, :] /= average_counter
+                                                            stLFP_array[iteration_trial, interval_index, :],
+                                                            LFP[t_s_index-window_index//2:t_s_index+window_index//2+1])
+                if average_counter > 0:
+                    stLFP_array[iteration_trial, interval_index, :] /= average_counter
         
         stLFP = np.average(stLFP_array, axis=0) #trial-average computation
         return stLFP, window
