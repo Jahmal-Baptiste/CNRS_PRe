@@ -16,10 +16,7 @@ import numpy as np
 from scipy.signal import coherence, hanning
 from scipy.fftpack import fft
 from itertools import chain
-if sys.version_info[0] == 2:
-    import os.path
-else:
-    from pathlib import Path, PurePath
+import os.path
 
 
 from Validation.lfpcapabilities import ProducesLocalFieldPotential, ProducesConductance
@@ -48,10 +45,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         elec_pos = np.transpose(electrode_positions)   #to have the the coordinates along the 0 axis, as opposed to the input state
         self.electrode_positions = elec_pos            #positions of the electrodes (in m)
         self.sigma               = sigma*1e6           #parameter in the Coulomb law's formula (in uS/m)
-        if sys.version_info[0] == 2:
-            self.directory_PUREPATH = os.path.abspath("")
-        else:
-            self.directory_PUREPATH = PurePath()
+        self.directory_ABSPATH = os.path.abspath("")
         
         ### COMPUTATION OF THE NUMBER OF SEGMENTS
         self.set_directory_path()
@@ -83,28 +77,16 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             
             directory_path = parent_directory + date
             
-            if sys.version_info[0] == 2:
-                if not os.path.exists(directory_path):
-                    sys.exit("Directory does not exist!")
-                self.directory_PUREPATH = os.path.abspath(directory_path)
-            else:
-                directory_PATH = Path(directory_path)
-                if not directory_PATH.exists():
-                    sys.exit("Directory does not exist!")
-                self.directory_PUREPATH = PurePath(directory_path)
+            if not os.path.exists(directory_path):
+                sys.exit("Directory does not exist!")
+            self.directory_ABSPATH = os.path.abspath(directory_path)
 
         elif self.network_model == "T2":
             directory_path = "./T2/ThalamoCorticalModel_data_size_____/"
 
-            if sys.version_info[0] == 2:
-                if not os.path.exists(directory_path):
-                    sys.exit("Directory does not exist!")
-                self.directory_PUREPATH = os.path.abspath(directory_path)
-            else:
-                directory_PATH = Path(directory_path)
-                if not directory_PATH.exists():
-                    sys.exit("Directory does not exist!")
-                self.directory_PUREPATH = PurePath(directory_path)
+            if not os.path.exists(directory_path):
+                sys.exit("Directory does not exist!")
+            self.directory_ABSPATH = os.path.abspath(directory_path)
         else:
             raise NotImplementedError("Only the T2 and the Voggels-Abott models are supported.")
             
@@ -114,27 +96,17 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             if neuron_type == "":
                 raise ValueError("Must specify a neuron type.")
             
-            date      = self.directory_PUREPATH.parts[-1]
-            file_path = str(self.directory_PUREPATH) + "/VAbenchmarks_COBA_{0}_neuron_np1_{1}-{2}.pkl".format(neuron_type,
+            date      = self.directory_ABSPATH.parts[-1]
+            file_path = str(self.directory_ABSPATH) + "/VAbenchmarks_COBA_{0}_neuron_np1_{1}-{2}.pkl".format(neuron_type,
                                                                                                              date, time)
-            if sys.version_info[0] == 2:
-                if not os.path.exists(file_path):
-                    sys.exit("File name does not exist! (Try checking the time argument.)")
-            else:
-                file_PATH = Path(file_path)
-                if not file_PATH.exists():
-                    sys.exit("File name does not exist! (Try checking the time argument.)")
+            if not os.path.exists(file_path):
+                sys.exit("File name does not exist! (Try checking the time argument.)")
         
         elif self.network_model == "T2":
-            file_path = str(self.directory_PUREPATH) + "/Segment{}.pickle".format(segment_number)
+            file_path = str(self.directory_ABSPATH) + "/Segment{}.pickle".format(segment_number)
 
-            if sys.version_info[0] == 2:
-                if not os.path.exists(file_path):
-                    sys.exit("File name does not exist!")
-            else:
-                file_PATH = Path(file_path)
-                if not file_PATH.exists():
-                    sys.exit("File name does not exist!")
+            if not os.path.exists(file_path):
+                sys.exit("File name does not exist!")
         else:
             raise NotImplementedError("Only the T2 and the Voggels-Abott models are supported.")
         return file_path
