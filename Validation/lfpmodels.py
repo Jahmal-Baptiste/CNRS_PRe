@@ -34,7 +34,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
     """
 
     def __init__(self, name=None, network_model="VA", space_dependency=False, dimensionnality=3,
-                 dimensions=np.array([0.002, 0.002, 0.]), reach=0.001,
+                 dimensions=np.array([0.004, 0.004, 0.]), reach=0.001,
                  electrode_positions=np.array([[0.], [0.], [0.]]), sigma=0.3):
         self.name                = name
         self.network_model       = network_model       #Voggels-Abbott for the moment
@@ -45,12 +45,12 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         elec_pos = np.transpose(electrode_positions)   #to have the the coordinates along the 0 axis, as opposed to the input state
         self.electrode_positions = elec_pos            #positions of the electrodes (in m)
         self.sigma               = sigma*1e6           #parameter in the Coulomb law's formula (in uS/m)
-        self.directory_ABSPATH = os.path.abspath("")
+        self.directory_ABSPATH   = os.path.abspath("")
         
         ### COMPUTATION OF THE NUMBER OF SEGMENTS
         self.set_directory_path()
         if self.network_model == "T2":
-            self.num_trials = 1                       #number of trials for a same experiment
+            self.num_trials = 10                       #number of trials for a same experiment
         elif self.network_model == "VA":
             self.num_trials = 1
         else:
@@ -377,18 +377,18 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         neuron_positions = self.get_positions()
 
         ### SELECTION OF THE NEURONS WHERE THE COMPUTATION IS VALID (NON-NAN VALUES)
-        vm_nan             = np.isnan(vm[-1, :])
-        vm_nan_indexes     = np.argwhere(vm_nan == True)
-        vm[:, vm_nan_indexes] = 0*vm.units
-        gsyn_nan           = np.isnan(gsyn[-1, :])
-        gsyn_nan_indexes   = np.argwhere(gsyn_nan == True)
+        vm_nan                    = np.isnan(vm[-1, :])
+        vm_nan_indexes            = np.argwhere(vm_nan == True)
+        vm[:, vm_nan_indexes]     = 0*vm.units
+        gsyn_nan                  = np.isnan(gsyn[-1, :])
+        gsyn_nan_indexes          = np.argwhere(gsyn_nan == True)
         gsyn[:, gsyn_nan_indexes] = 0*gsyn.units
 
         time_points      = vm.times
         num_time_points  = vm.shape[0]
         num_electrodes   = self.electrode_positions.shape[0]
         
-        current_array = np.multiply(vm, gsyn)
+        current_array     = np.multiply(vm, gsyn)
         big_current_array = np.resize(current_array, (num_time_points, self.num_neurons, num_electrodes))
         big_current_array = np.transpose(big_current_array, (2, 0, 1))
 
@@ -413,6 +413,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             if self.exc_counted == False and self.inh_counted == False:
                 self.num_neurons = positions.shape[1]
         else:
+            
             raise NotImplementedError("Must implement get_positions.")
         return positions
 
@@ -444,8 +445,8 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         vm               = self.get_membrane_potential(trial=trial)
         neuron_positions = self.get_positions()
 
-        vm_nan             = np.isnan(vm[-1, :])
-        vm_nan_indexes     = np.argwhere(vm_nan == True)
+        vm_nan                = np.isnan(vm[-1, :])
+        vm_nan_indexes        = np.argwhere(vm_nan == True)
         vm[:, vm_nan_indexes] = 0*vm.units
 
         num_electrodes   = self.electrode_positions.shape[0]
@@ -483,10 +484,11 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         self.get_positions() #just to initiate the value of self.num_neurons
         zerolagcorrelations_array = np.zeros((trials, self.num_neurons))
         for iteration_trial in range(trials):
+            print("Trial: " + str(iteration_trial) + "...")
             vm  = self.get_membrane_potential(trial=iteration_trial)
 
-            vm_nan             = np.isnan(vm[-1, :])
-            vm_nan_indexes     = np.argwhere(vm_nan == True)
+            vm_nan                = np.isnan(vm[-1, :])
+            vm_nan_indexes        = np.argwhere(vm_nan == True)
             vm[:, vm_nan_indexes] = 0*vm.units
 
             vm  = vm[start_index:start_index+duration_index+1, :]
@@ -525,8 +527,8 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
 
         vm  = self.get_membrane_potential(trial=trial)
 
-        vm_nan             = np.isnan(vm[-1, :])
-        vm_nan_indexes     = np.argwhere(vm_nan == True)
+        vm_nan                = np.isnan(vm[-1, :])
+        vm_nan_indexes        = np.argwhere(vm_nan == True)
         vm[:, vm_nan_indexes] = 0*vm.units
 
         vm  = vm[start_index:start_index+duration_index+1, :]
@@ -576,6 +578,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
                                 dtype=float)              #multi-trial Phase-Lock value array, empty for the moment
 
         for iteration_trial in range(trials):
+            print("Trial: " + str(iteration_trial) + "...")
             spiketrain   = np.array(self.get_spike_train(trial=iteration_trial))
             selected_spikes = np.multiply(spiketrain, mf.door(spiketrain, start+offset, start+duration))
             selected_spikes = selected_spikes[selected_spikes > 0]
@@ -630,8 +633,8 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             discrim_indexes[i] = i_indexes.flatten().tolist()
         
         '''
-        Now I have discriminated the neurons according to their distance from the electrode (information stored in
-        their indexes in the list discrim_indexes), I can separate the stLFPs according to this criteria.
+        Now we have discriminated the neurons according to their distance from the electrode (information stored in
+        their indexes in the list discrim_indexes), we can separate the stLFPs according to this criteria.
         '''
 
         if trial_average:
@@ -646,6 +649,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
 
         for iteration_trial in range(trials):
             ### LOOP ON THE TRIALS
+            print("Trial: " + str(iteration_trial) + "...")
             spiketrains = self.get_spike_trains(trial=iteration_trial)
             LFP         = self.produce_local_field_potential(trial=iteration_trial)[0][0, :]
 

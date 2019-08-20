@@ -18,14 +18,14 @@ from .Validation.lfpmodels import CoulombModel
 from  .Functions import math_functions as mf
 
 
-first_model = CoulombModel("First", network_model="T2")
+first_model = CoulombModel("First", network_model="VA")
 
-LFP_bool   = False
+LFP_bool   = True
 vm_bool    = False
 gsyn_bool  = False
 corr_bool  = False
 coher_bool = False
-stLFP_bool = True
+stLFP_bool = False
 PLv_bool   = False
 
 trial_average = True
