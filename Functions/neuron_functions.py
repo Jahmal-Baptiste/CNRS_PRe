@@ -16,8 +16,8 @@ def electrode_neuron_inv_dist(num_electrodes, num_neurons, electrode_positions, 
                                                                              #the electrode and the neurons
 
     inv_dist   = np.power(distances, -1)                                     #inverse distances
-    valid_dist = np.heaviside(reach*np.ones(distances.shape) - distances, 1) #normalized distances within the reach
-    inv_dist   = np.multiply(inv_dist, valid_dist)                           #selected distances (within the reach)
+    #valid_dist = np.heaviside(reach*np.ones(distances.shape) - distances, 1) #normalized distances within the reach
+    #inv_dist   = np.multiply(inv_dist, valid_dist)                           #selected distances (within the reach)
     
     return inv_dist
 

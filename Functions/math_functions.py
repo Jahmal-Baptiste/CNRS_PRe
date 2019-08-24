@@ -3,12 +3,12 @@ import numpy as np
 
 def random_list(n, maximum, minimum=1):
     '''Returns a list of n random numbers between 1 (included) and maximum (excluded), all different.'''
-    if n >= maximum-1:
-        return [range(minimum, maximum)]
+    if n >= maximum-minimum:
+        return [k for k in range(minimum, maximum+1)]
     rnd_list = []
     k = 0
     while k<n:
-        rnd_num = np.random.random_integers(minimum, maximum-1)
+        rnd_num = np.random.random_integers(minimum, maximum)
         if rnd_num not in rnd_list:
             k+=1
             rnd_list.append(rnd_num)

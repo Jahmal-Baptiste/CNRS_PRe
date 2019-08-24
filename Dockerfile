@@ -7,7 +7,7 @@
 #
 # docker build --no-cache -t mozaik .
 # docker run -e DISPLAY=$DISPLAY -v `pwd`:`pwd` -w `pwd` -i -t mozaik /bin/bash
-# (in the image)# python run_size_closed.py nest 8 param/defaults_mea 'data_size'
+# (in the image)# python run_size_closed.py nest 1 param/defaults_mea 'data_size'
 
 FROM neuralensemble/simulationx:py2
 

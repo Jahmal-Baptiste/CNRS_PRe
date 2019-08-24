@@ -487,7 +487,7 @@ plt.legend()
 
 ### PHASE-LOCK VALUE
 
-if 1 == 1:
+if 1 == 0:
     print('\nPhase-lock value...')
     start = 525
     offset = 250
