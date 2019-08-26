@@ -29,31 +29,34 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
     """
 
     def __init__(self, name=None, network_model="VA", space_dependency=False, dimensionnality=3,
-                 dimensions=np.array([0.006, 0.006, 0.]), reach=0.001,
-                 electrode_positions=np.array([[0.], [0.], [0.]]), sigma=0.3):
+                 experiment='sin_stim', dimensions=np.array([0.006, 0.006, 0.]), reach=0.001,
+                 electrode_positions=np.array([[0.], [0.], [0.]]), sigma=0.3, seed=42, ratio=False):
+        print("\nInstatiating model...")
         self.name                = name
         self.network_model       = network_model       #Voggels-Abbott for the moment
         self.space_dependency    = space_dependency    #Boolean indicating if the neurons' positions are available
         self.dimensionnality     = dimensionnality     #dimensionnality of the network - either 2 or 3 D
-        self.dimensions          = dimensions          #3D-array: leght, width and height of the network (in m)
+        self.dimensions          = dimensions          #1D-array: width, height and depth of the network (in m)
         self.reach               = reach               #reach of the LFP (in m)
         elec_pos = np.transpose(electrode_positions)   #to have the the coordinates along the 0 axis, as opposed to the input state
         self.electrode_positions = elec_pos            #positions of the electrodes (in m)
         self.dt                  = 0.1                 #time step
         self.sigma               = sigma*1e6           #parameter in the Coulomb law's formula (in uS/m)
-        self.directory_ABSPATH   = os.path.abspath("")
-        
+        self.directory_ABSPATH   = os.path.abspath("") #initialisation of the data directory path
+        self.seed                = seed                #seed for "random selections" 
+        self.ratio               = ratio               #bool that tells if the ratio 4:1 is to be respected when selecting the neurons
+        if network_model == 'VA':
+            experiment = 'blank_stim'
+        self.experiment          = experiment          #either 'sin_stim' or 'blank_stim'
+
         self.num_neurons         = 0                   #number of neurons computed - will be properly initialized during LFP computation
         self.exc_counted         = False               #bool that tells if the excitatory neurons have been counted
         self.inh_counted         = False               #bool that tells if the inhibitatory neurons have been counted
-
-        self.seed                = 42                  #seed for "random selections" 
-        self.ratio               = False               #bool that tells if the ratio 4:1 is to be respected when selecting the neurons
-
+        
         ### COMPUTATION OF THE NUMBER OF SEGMENTS
         self.set_directory_path()
         if self.network_model == "T2":
-            self.num_trials = 1                        #number of trials for a same experiment
+            self.num_trials = 5                        #number of trials for a same experiment
         elif self.network_model == "VA":
             self.num_trials = 1
         else:
@@ -71,6 +74,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
     #================================================================================================================
 
     def set_directory_path(self, date="20190718"):
+        ### VA MODEL ################################################################################################
         if self.network_model == "VA":
             parent_directory="./Examples/Results/"
             
@@ -80,6 +84,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
                 sys.exit("Directory does not exist!")
             self.directory_ABSPATH = os.path.abspath(directory_path)
 
+        ### T2 MODEL ################################################################################################
         elif self.network_model == "T2":
             directory_path = "./T2/ThalamoCorticalModel_data_size_____/"
 
@@ -91,6 +96,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             
     
     def get_file_path(self, segment_number="0", time="201157", neuron_type=""):
+        ### VA MODEL ################################################################################################
         if self.network_model == "VA":
             if neuron_type == "":
                 raise ValueError("Must specify a neuron type.")
@@ -101,6 +107,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             if not os.path.exists(file_path):
                 sys.exit("File name does not exist! (Try checking the time argument.)")
         
+        ### T2 MODEL ################################################################################################
         elif self.network_model == "T2":
             file_path = str(self.directory_ABSPATH) + "/Segment{}.pickle".format(segment_number)
 
@@ -117,7 +124,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
     #================================================================================================================
     
     
-    def get_membrane_potential(self, trial=0, experiment="sin_stim"):
+    def get_membrane_potential(self, trial=0, set_int=1):
         """
         Returns a neo.core.analogsignal.AnalogSignal representing the membrane potential of all neurons, regardless
         of their type.
@@ -126,7 +133,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         """
         self.set_directory_path()
         
-        ### VA MODEL ###
+        ### VA MODEL ################################################################################################
         if self.network_model == "VA":
             ### EXCITATORY NEURONS
             neuron_type = "exc"
@@ -158,17 +165,22 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             vm_array = np.concatenate((np.array(vm_exc), np.array(vm_inh)), axis=1)
             vm       = neo.core.AnalogSignal(vm_array, units=vm_exc.units, t_start=vm_exc.t_start,
                                              sampling_rate=vm_exc.sampling_rate)
-        ### T2 MODEL ###
+        ### T2 MODEL ################################################################################################
         else:
-            if experiment == "sin_stim":
+            if set_int == 1:
                 data_int = 0
-            elif experiment == "blank_stim":
+            elif set_int == 2:
                 data_int = 5
             else:
-                raise ValueError("The experiment argument must be either 'sin_stim' or 'blank_stim'.")
+                raise ValueError("The set_int argument must be either 1 or 2.")
             
             ### EXCITATORY NEURONS
-            seg_num     = str(20*(trial+1)+data_int+2)
+            if self.experiment == "sin_stim":
+                seg_num = str(10*(trial+1)+data_int+2)
+            elif self.experiment == "blank_stim":
+                seg_num = str(data_int+2)
+            else:
+                raise ValueError("The experiment argument must be either 'sin_stim' or 'blank_stim'.")
             file_path   = self.get_file_path(segment_number=seg_num)
             PyNN_file   = open(file_path, "rb")
             seg         = pickle.load(PyNN_file, encoding="latin1")
@@ -180,7 +192,10 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
                 self.exc_counted  = True
             
             ### INHIBITORY NEURONS
-            seg_num     = str(20*(trial+1)+data_int+1)
+            if self.experiment == "sin_stim":
+                seg_num = str(10*(trial+1)+data_int+1)
+            else:
+                seg_num = str(data_int+1)
             file_path   = self.get_file_path(segment_number=seg_num)
             PyNN_file   = open(file_path, "rb")
             seg         = pickle.load(PyNN_file, encoding="latin1")
@@ -221,7 +236,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
 
 #====================================================================================================================
 
-    def get_conductance(self, trial=0, experiment="sin_stim", max_time=300):
+    def get_conductance(self, trial=0, set_int=1):
         """
         Returns a neo.core.analogsignal.AnalogSignal representing the synaptic conductance of all neurons, regardless
         of their type.
@@ -230,6 +245,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         """
         self.set_directory_path()
         
+        ### VA MODEL ################################################################################################
         if self.network_model == "VA":
             ### EXCITATORY NEURONS
             neuron_type = "exc"
@@ -261,16 +277,23 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             gsyn_array = np.concatenate((np.array(gsyn_exc), np.array(gsyn_inh)), axis=1)
             gsyn       = neo.core.AnalogSignal(gsyn_array, units=gsyn_exc.units, t_start=gsyn_exc.t_start,
                                                sampling_rate=gsyn_exc.sampling_rate)
+        
+        ### T2 MODEL ################################################################################################
         else:
-            if experiment == "sin_stim":
+            if set_int == 1:
                 data_int = 0
-            elif experiment == "blank_stim":
+            elif set_int == 2:
                 data_int = 5
             else:
-                raise ValueError("The experiment argument must be either 'sin_stim' or 'blank_stim'.")
+                raise ValueError("The set_int argument must be either 1 or 2.")
             
             ### EXCITATORY NEURONS
-            seg_num     = str(20*(trial+1)+data_int+2)
+            if self.experiment == "sin_stim":
+                seg_num = str(10*(trial+1)+data_int+2)
+            elif self.experiment == "blank_stim":
+                seg_num = str(data_int+2)
+            else:
+                raise ValueError("The experiment argument must be either 'sin_stim' or 'blank_stim'.")
             file_path   = self.get_file_path(segment_number=seg_num)
             PyNN_file   = open(file_path, "rb")
             seg         = pickle.load(PyNN_file, encoding="latin1")
@@ -281,18 +304,21 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
                 if analogsignal.name == 'gsyn_inh':
                     gsyn_exc_inh = analogsignal
             
-            gsyn_exc            = np.array(np.resize(gsyn_exc_exc, (gsyn_exc_exc.shape[0], gsyn_exc_exc.shape[1], 2)))
+            gsyn_exc            = np.array(np.resize(gsyn_exc_exc, (2, gsyn_exc_exc.shape[0], gsyn_exc_exc.shape[1])))#(gsyn_exc_exc.shape[0], gsyn_exc_exc.shape[1], 2)))
             gsyn_exc_inh_array  = np.array(gsyn_exc_inh)
             gsyn_exc[:, :, 1]   = gsyn_exc_inh_array
             conductance_weights = np.array([4., 1.])
-            gsyn_exc            = np.average(gsyn_exc, axis=2, weights=conductance_weights)
+            gsyn_exc            = np.average(gsyn_exc, axis=0, weights=conductance_weights)
 
             if self.exc_counted == False:
                 self.num_neurons += gsyn_exc.shape[1]
                 self.exc_counted  = True
             
             ### INHIBITORY NEURONS
-            seg_num     = str(20*(trial+1)+data_int+1)
+            if self.experiment == "sin_stim":
+                seg_num = str(10*(trial+1)+data_int+1)
+            else:
+                seg_num = str(data_int+1)
             file_path   = self.get_file_path(segment_number=seg_num)
             PyNN_file   = open(file_path, "rb")
             seg         = pickle.load(PyNN_file, encoding="latin1")
@@ -303,11 +329,11 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
                 if analogsignal.name == 'gsyn_inh':
                     gsyn_inh_inh = analogsignal
             
-            gsyn_inh            = np.array(np.resize(gsyn_inh_exc, (gsyn_inh_exc.shape[0], gsyn_inh_exc.shape[1], 2)))
+            gsyn_inh            = np.array(np.resize(gsyn_inh_exc, (2, gsyn_inh_exc.shape[0], gsyn_inh_exc.shape[1])))
             gsyn_inh_inh_array  = np.array(gsyn_inh_inh)
             gsyn_inh[:, :, 1]   = gsyn_inh_inh_array
             conductance_weights = np.array([4., 1.])
-            gsyn_inh            = np.average(gsyn_inh, axis=2, weights=conductance_weights)
+            gsyn_inh            = np.average(gsyn_inh, axis=0, weights=conductance_weights)
 
             # selection of the inhibitory neurons to have 1/4 of the amount of excitatory neurons
             if self.ratio:
@@ -344,7 +370,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
 
 #====================================================================================================================
     
-    def get_spike_trains(self, trial=0, experiment="sin_stim"):
+    def get_spike_trains(self, trial=0, set_int=1):
         """
         Returns a list of neo.core.SpikeTrain elements representing the spike trains of all neurons, regardless
         of their type.
@@ -353,6 +379,7 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
         """
         self.set_directory_path()
         
+        ### VA MODEL ################################################################################################
         if self.network_model == "VA":
             ### EXCITATORY NEURONS
             neuron_type = "exc"
@@ -378,16 +405,23 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
 
             ### ALL NEURONS
             spiketrains = spiketrains_exc + spiketrains_inh
+        
+        ### T2 MODEL ################################################################################################
         else:
-            if experiment == "sin_stim":
+            if set_int == 1:
                 data_int = 0
-            elif experiment == "blank_stim":
+            elif set_int == 2:
                 data_int = 5
             else:
-                raise ValueError("The experiment argument must be either 'sin_stim' or 'blank_stim'.")
-
+                raise ValueError("The set_int argument must be either 1 or 2.")
+            
             ### EXCITATORY NEURONS
-            seg_num     = str(20*(trial+1)+data_int+2)
+            if self.experiment == "sin_stim":
+                seg_num = str(10*(trial+1)+data_int+2)
+            elif self.experiment == "blank_stim":
+                seg_num = str(data_int+2)
+            else:
+                raise ValueError("The experiment argument must be either 'sin_stim' or 'blank_stim'.")
             file_path   = self.get_file_path(segment_number=seg_num)
             PyNN_file   = open(file_path, "rb")
             seg         = pickle.load(PyNN_file, encoding="latin1")
@@ -397,7 +431,10 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
                 self.exc_counted  = True
             
             ### INHIBITORY NEURONS
-            seg_num     = str(20*(trial+1)+data_int+1)
+            if self.experiment == "sin_stim":
+                seg_num = str(10*(trial+1)+data_int+1)
+            else:
+                seg_num = str(data_int+1)
             file_path   = self.get_file_path(segment_number=seg_num)
             PyNN_file   = open(file_path, "rb")
             seg         = pickle.load(PyNN_file, encoding="latin1")
@@ -445,6 +482,8 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
                 self.num_neurons = positions.shape[1]
                 self.exc_counted = True
                 self.inh_counted = True
+        
+        ### T2 MODEL ################################################################################################
         else:
             if self.network_model == "T2":
                 ### EXCITATORY NEURONS
@@ -502,7 +541,9 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             self.num_neurons = len(self.get_spike_trains(trial=0))
             self.exc_counted = True
             self.inh_counted = True
-        positions = np.multiply(self.dimensions, np.random.rand(self.num_neurons, self.dimensionnality)-0.5)
+        np.random.seed(self.seed)
+        random_grid = 2*(np.random.rand(self.num_neurons, self.dimensionnality)-0.5)
+        positions   = np.multiply(self.dimensions, random_grid)
         return positions
 
 
@@ -511,29 +552,31 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
     #== LFP related methods =========================================================================================
     #================================================================================================================
     
-    def produce_local_field_potential(self, trial=0):
+    def produce_local_field_potential(self, trial=0, electrode=0):
         """
         Calculates and returns the 2D-array of the LFP.
         The first dimension corresponds to the electrodes.
         """
+        #if trial == self.computed_trial:
+        #    return self.computed_LFP, self.computed_time_points
+        
         vm                = self.get_membrane_potential(trial=trial)
         gsyn              = self.get_conductance(trial=trial)
         neuron_positions  = self.get_positions()
         
         num_time_points   = vm.shape[0]
-        num_electrodes    = self.electrode_positions.shape[0]
+        #num_electrodes    = self.electrode_positions.shape[0]
+        num_electrodes    = 1
         
         current_array     = np.multiply(vm, gsyn)
-        big_current_array = np.resize(current_array, (num_time_points, self.num_neurons, num_electrodes))
-        big_current_array = np.transpose(big_current_array, (2, 0, 1))
+        big_current_array = np.resize(current_array, (num_electrodes, num_time_points, self.num_neurons))
 
         inv_dist     = nf.electrode_neuron_inv_dist(num_electrodes, self.num_neurons,
-                                                    self.electrode_positions, neuron_positions,
+                                                    self.electrode_positions[electrode], neuron_positions,
                                                     self.reach, self.dimensionnality)
         valid_dist   = np.heaviside(inv_dist - 1/self.reach, 1) #normalized distances within the reach
         inv_dist     = np.multiply(inv_dist, valid_dist)        #selected distances (within the reach)
-        big_inv_dist = np.resize(inv_dist, (num_electrodes, self.num_neurons, num_time_points))
-        big_inv_dist = np.transpose(big_inv_dist, (0, 2, 1))
+        big_inv_dist = np.resize(inv_dist, (num_electrodes, num_time_points, self.num_neurons))
 
         indiv_LFP   = np.multiply(big_current_array, big_inv_dist)
         LFP         = np.sum(indiv_LFP, axis=2)/(4*np.pi*self.sigma)
@@ -712,71 +755,111 @@ class CoulombModel(sciunit.Model, ProducesLocalFieldPotential, ProducesMembraneP
             trials     = 1
             trial_list = [trial]
         
-        fs           = 1000./self.dt                      #sampling frequency
-        window       = 150                                #ms, size of the window in which the LFP will have its Fourier transformations
-        window_index = int(window/self.dt)
-        window_width = window_index//2
-        w            = hanning(window_index+1)            #150 ms window with a 0,1 ms interval
-        PLv_array    = np.zeros((trials, window_index+1),
-                                dtype=float)              #multi-trial Phase-Lock value array, empty for the moment
+        fs              = 1000./self.dt                #sampling frequency
+        window          = 150                          #ms, size of the window in which the LFP will have its Fourier transformations
+        window_index    = int(window/self.dt)
+        window_width    = window_index//2
+        w               = hanning(window_index+1)      #150 ms window with a 0,1 ms interval
+        PLv_array       = np.zeros((trials, window_index+1),
+                                   dtype=float) #multi-trial Phase-Lock value array, empty for the moment
+        PLv_std_array   = np.zeros((trials, window_index+1),
+                                   dtype=float)
+        num_electrodes  = self.electrode_positions.shape[0]
+        ref_electrode   = num_electrodes//2 #electrode detecting the spikes
+        print("Spike-detecting electrode's position: " + str(self.electrode_positions[ref_electrode]) + "\n")
+        if ref_electrode   == 0:
+            first_electrode = 1
+        else:
+            first_electrode = 0
 
         for iteration_trial in trial_list:
             print("  Trial " + str(iteration_trial) + "...")
 
             print("    Computation of the LFP...")
-            LFP             = self.produce_local_field_potential(trial=iteration_trial)[0][0, :]
+            print("      At electrode number (0/{})...".format(num_electrodes-2))
+            first_LFP = self.produce_local_field_potential(trial=iteration_trial, electrode=first_electrode)[0][0, :]
+            LFP       = np.zeros((num_electrodes-1, first_LFP.shape[0]))
+            LFP[0]    = first_LFP
+            count     = 1
+            for electrode in range(1, ref_electrode):
+                print("      At electrode number ({0}/{1})...".format(count, num_electrodes-2))
+                LFP[electrode] = self.produce_local_field_potential(trial=iteration_trial, electrode=electrode)[0][0, :]
+                count         += 1
+            for electrode in range(ref_electrode+1, num_electrodes):
+                print("      At electrode number ({0}/{1})...".format(count, num_electrodes-2))
+                LFP[electrode-1] = self.produce_local_field_potential(trial=iteration_trial, electrode=electrode)[0][0, :]
+                count           += 1
             
-            print("    Loading of the spikes...")
-            if withinreach:
-                spiketrains = self.get_spike_trains(trial=iteration_trial)
 
-                print("      Elimination of the contribution of the neurons out of the electrode's reach...")
-                num_electrodes     = self.electrode_positions.shape[0]
-                neuron_positions   = self.get_positions()
-                inv_dist           = nf.electrode_neuron_inv_dist(num_electrodes, self.num_neurons,
-                                                                  self.electrode_positions, neuron_positions,
-                                                                  self.reach, self.dimensionnality)[0, :]
-                valid_neurons         = np.heaviside(inv_dist - 1/self.reach, 1)
-                valid_neurons_indexes = np.argwhere(valid_neurons > 0)
-                valid_neurons_num     = valid_neurons_indexes.shape[0]
-                spiketrains_sel       = []
-                for k in range(valid_neurons_num):
-                    spiketrains_sel.append(spiketrains[valid_neurons_indexes[k, 0]])
-                print("      Neurons left: " + str(len(spiketrains_sel)))
-                spiketrain = np.array(list(chain.from_iterable(spiketrain for spiketrain in spiketrains_sel)))
-            else:
-                spiketrain = np.array(self.get_spike_train(trial=iteration_trial))
+            print("    Loading of the spikes...")
+            spiketrains = self.get_spike_trains(trial=iteration_trial)
+
+            print("      Elimination of the contribution of the neurons out of the electrode's reach...")
+            num_electrodes     = self.electrode_positions.shape[0]
+            neuron_positions   = self.get_positions()
+            inv_dist           = nf.electrode_neuron_inv_dist(num_electrodes, self.num_neurons,
+                                                                self.electrode_positions, neuron_positions,
+                                                                self.reach, self.dimensionnality)[ref_electrode, :]
+            valid_neurons         = np.heaviside(inv_dist - 1/self.reach, 1)
+            valid_neurons_indexes = np.argwhere(valid_neurons > 0)
+            valid_neurons_num     = valid_neurons_indexes.shape[0]
+            spiketrains_sel       = []
+            for k in range(valid_neurons_num):
+                spiketrains_sel.append(spiketrains[valid_neurons_indexes[k, 0]])
+            print("      Neurons left: " + str(len(spiketrains_sel)))
+            spiketrain = np.array(list(chain.from_iterable(spiketrain for spiketrain in spiketrains_sel)))
+            
 
             print("    Selection of the spikes in the proper time window...")
-            selected_spikes = np.multiply(spiketrain, mf.door(spiketrain, start+offset, start+duration-window//2))
-            selected_spikes = selected_spikes[selected_spikes > 0]
-            N_s             = min(selected_spikes.shape[0], N_max)  #security measure
-            rnd_spike_list  = mf.random_list(N_s, selected_spikes.shape[0]-1, minimum=0)
+            selected_spikes  = np.multiply(spiketrain, mf.door(spiketrain, start+offset, start+duration-window//2))
+            selected_spikes  = selected_spikes[selected_spikes > 0]
+            num_spikes       = selected_spikes.shape[0]
+            spike_index_list = [k for k in range(num_spikes)]
+            print("      There are " + str(num_spikes) + " spikes.")
+            N_s              = min(num_spikes, N_max) #security measure
             if N_s < N_max:
                 sys.exit("Not enough spikes in this segment (or at least in the time window).")
-
-            print("    Computation of the Phase-Lock value...")
-            for t_index in rnd_spike_list:
-                t_s       = selected_spikes[t_index]                                         #time of spike occurence
-                t_s_index = int(10*t_s)                                                      #corresponding index for the arrays
-                LFP_s     = LFP[t_s_index - window_width : t_s_index + window_width+1]       #Non-filtered version
-                wLFP_s    = np.multiply(w, LFP_s)                                            #centered LFP multiplied by the Hanning window
-                FT_s      = fft(wLFP_s)                                                      #Fourier transform of this weighted LFP
-                nFT_s     = np.divide(FT_s, np.abs(FT_s))                                    #normalized Fourier transform
-                nFT_s     = np.real(nFT_s)
-                PLv_array[iteration_trial, :] = np.add(PLv_array[iteration_trial, :], nFT_s) #contribution to the PLv added
-
-            PLv_array[iteration_trial, :]  = np.abs(PLv_array[iteration_trial, :])/N_s       #normalized module, according to the paper
             
-        PLv  = np.average(PLv_array, axis=0)                          #trial-average
-        fPLv = (fs/PLv.shape[0])*np.arange(PLv.shape[0], dtype=float) #frequencies of the PLv
+            print("    Computation of the Phase-Lock value...")
+            num_spike_pools = num_spikes//(N_s)
+            PLv_trial       = np.zeros((num_spike_pools, window_index+1), dtype=float)
+            for pool_int in range(num_spike_pools):
+                rnd_spike_list = mf.random_list(N_s, num_spikes-1, minimum=0)
+
+                nFT     = np.zeros((N_s, window_index+1), dtype=np.complex64)
+                counter = 0
+                for t_index in rnd_spike_list:
+                    t_s       = selected_spikes[t_index]                                      #time of spike occurence
+                    t_s_index = int(10*t_s)                                                   #corresponding index for the arrays
+                    LFP_s     = LFP[:, t_s_index - window_width : t_s_index + window_width+1] #Selected LFP
+                    wLFP_s    = np.multiply(w, LFP_s)                                         #centered LFP multiplied by the Hanning window
+                    FT_s      = np.zeros((num_electrodes-1, window_index+1), dtype=np.complex64)
+                    for electrode in range(num_electrodes-1):
+                        FT_s[electrode] = fft(wLFP_s[electrode, :])      #Fourier transform of this weighted LFP
+                    nFT_s           = np.divide(FT_s, np.absolute(FT_s)) #normalized Fourier transform
+                    anFT_s          = np.average(nFT_s, axis=0)          #averaged over the electrodes
+                    nFT[counter, :] = anFT_s
+                    counter        += 1
+                
+                PLv_trial[pool_int, :] = np.absolute(np.average(nFT, axis=0))
+
+                selected_spikes = np.delete(selected_spikes, rnd_spike_list)
+                num_spikes     -= N_s
+            
+            PLv_array[iteration_trial, :]     = np.average(PLv_trial, axis=0)
+            PLv_std_array[iteration_trial, :] = np.std(PLv_trial, axis=0)
+            
+        PLv     = np.average(PLv_array, axis=0)                          #trial-average
+        PLv_std = np.average(PLv_std_array, axis=0)
+        fPLv    = (fs/PLv.shape[0])*np.arange(PLv.shape[0], dtype=float) #frequencies of the PLv
 
         min_index = np.argwhere(fPLv < 20.)[-1, 0]
         max_index = np.argwhere(fPLv > 100.)[0, 0]
         fPLv      = fPLv[min_index:max_index+1]
         PLv       = PLv[min_index:max_index+1]
+        PLv_std   = PLv_std[min_index:max_index+1]
         print("")
-        return PLv, fPLv
+        return PLv, fPLv, PLv_std
 
 
 

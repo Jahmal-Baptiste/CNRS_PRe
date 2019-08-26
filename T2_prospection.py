@@ -29,7 +29,7 @@ positions = False
 for k in range(1):
     if content:
         #with open("./T2/ThalamoCorticalModel_data_size_____/Segment{}.pickle".format(str(k)), "rb") as PyNN_file:
-        with open("./T2/ThalamoCorticalModel_data_size_____/Segment11(1).pickle", "rb") as PyNN_file:
+        with open("./T2/ThalamoCorticalModel_data_size_____/Segment2.pickle", "rb") as PyNN_file:
             while True:
                 try:
                     plot = True
@@ -38,42 +38,42 @@ for k in range(1):
                     #print("Segment description:\n\n" + seg.description)
                     #print("Segment annotations:\n\n" + str(seg.annotations) + "\n")
                     #if 'DriftingSinusoidalGratingDisk' in seg.annotations['stimulus']:
-                    #    if seg.annotations['sheet_name'] in ['V1_Exc_L4', 'V1_Inh_L4']:
-                    #        print("Segment" + str(k) + ":")
-                    #        print(seg.annotations)
+                    if seg.annotations['sheet_name'] in ['V1_Exc_L4', 'V1_Inh_L4']:
+                        print("Segment" + str(k) + ":")
+                        print(seg.annotations)
 
 
-                    ##################################
-                    ### PROSPECTION OF THE SEGMENT ###
-                    ##################################
+                        ##################################
+                        ### PROSPECTION OF THE SEGMENT ###
+                        ##################################
 
-                    num_analogsignals = len(seg.analogsignals)
-                    print("    Number of analogsignals: " + str(num_analogsignals))
-                    for k in range(num_analogsignals):
-                        print("        " + str(seg.analogsignals[k].name) + " in " + str(seg.analogsignals[k].units))
-                        print("        Shape: " + str(seg.analogsignals[k].shape))
+                        num_analogsignals = len(seg.analogsignals)
+                        print("    Number of analogsignals: " + str(num_analogsignals))
+                        for k in range(num_analogsignals):
+                            print("        " + str(seg.analogsignals[k].name) + " in " + str(seg.analogsignals[k].units))
+                            print("        Shape: " + str(seg.analogsignals[k].shape))
+                            if plot:
+                                plt.figure()
+                                plt.title(str(seg.analogsignals[k].name))
+                                time_points = seg.analogsignals[k].times
+                                for i in range(3):
+                                    plt.plot(time_points, seg.analogsignals[k][:, i])
+
+
+                        print("")
+                        #print("    Number of irregularlysampledsignals: " + str(len(seg.irregularlysampledsignals)) + "\n")
+                        print("    Number of spiketrains: " + str(len(seg.spiketrains)) + "\n")
                         if plot:
                             plt.figure()
-                            plt.title(str(seg.analogsignals[k].name))
-                            time_points = seg.analogsignals[k].times
-                            for i in range(3):
-                                plt.plot(time_points, seg.analogsignals[k][:, i])
+                            plt.title("Spike trains of segment " + str(k) + " and sheet " + seg.annotations['sheet_name'])
+                            rnd_list = mf.random_list(len(seg.spiketrains), len(seg.spiketrains), minimum=0)
+                            for k in range(len(seg.spiketrains)):    
+                                spiketrain_index = [k for i in range(len(seg.spiketrains[rnd_list[k]]))]
+                                plt.scatter(seg.spiketrains[rnd_list[k]], spiketrain_index, marker="+")
+                        #print("    Number of events: " + str(len(seg.events)) + "\n")
+                        #print("    Number of epochs: " + str(len(seg.epochs)) + "\n")
 
-
-                    #print("")
-                    #print("    Number of irregularlysampledsignals: " + str(len(seg.irregularlysampledsignals)) + "\n")
-                    print("    Number of spiketrains: " + str(len(seg.spiketrains)) + "\n")
-                    if plot:
-                        plt.figure()
-                        plt.title("Spike trains of segment " + str(k) + " and sheet " + seg.annotations['sheet_name'])
-                        rnd_list = mf.random_list(len(seg.spiketrains), len(seg.spiketrains), minimum=0)
-                        for k in range(len(seg.spiketrains)):    
-                            spiketrain_index = [k for i in range(len(seg.spiketrains[rnd_list[k]]))]
-                            plt.scatter(seg.spiketrains[rnd_list[k]], spiketrain_index, marker="+")
-                    print("    Number of events: " + str(len(seg.events)) + "\n")
-                    print("    Number of epochs: " + str(len(seg.epochs)) + "\n")
-
-                    plt.show()
+                        plt.show()
                 except EOFError:
                     break
 
